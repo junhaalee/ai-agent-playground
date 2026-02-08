@@ -1,0 +1,270 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        20
+      ],
+      "id": "fe894e12-3e68-44b8-9e0f-0c6fe07dbe11",
+      "name": "When clicking 'Test workflow'"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/app/inputs/input.json",
+        "options": {
+          "mimeType": ""
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        160,
+        20
+      ],
+      "id": "df6495dc-2c65-4829-b0ee-10407307b90a",
+      "name": "[Read File] Read Input File"
+    },
+    {
+      "parameters": {
+        "command": "=sh -c 'NOW=$(TZ=Asia/Seoul date +%Y%m%d-%H) && mkdir -p /app/videos/$NOW /app/images/$NOW /app/scripts/$NOW && echo $NOW'"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        440,
+        20
+      ],
+      "id": "01e15182-7368-4882-afe4-a781f6697e43",
+      "name": "[Execute Command] Create Timestamp directory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst jsonString = buffer.toString('utf-8');\nconst parsed = JSON.parse(jsonString);\nconst imageUrls = parsed.image;\n\n// yyyyMMdd-HH 형식 디렉토리명 생성\nconst kst = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);\nconst dirName = kst.toISOString().replace(/[-T:]/g, '').slice(0, 8) + '-' + kst.toISOString().slice(11, 13);\n\nconst results = [];\nfor (let i = 0; i < imageUrls.length; i++) {\n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: imageUrls[i],\n    encoding: 'arraybuffer',\n    returnFullResponse: true,\n  });\n\n  const fileName = `image_${i + 1}.jpg`;\n  results.push({\n    json: { fileName, dirName, url: imageUrls[i], status: 'downloaded' },\n    binary: {\n      data: await this.helpers.prepareBinaryData(\n        Buffer.from(response.body),\n        fileName,\n        'image/jpeg'\n      ),\n    },\n  });\n}\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        240
+      ],
+      "id": "05460960-3837-4b71-a392-bfb8c9c3e38f",
+      "name": "[Code] Parsing Image Url"
+    },
+    {
+      "parameters": {
+        "jsCode": "const buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst jsonString = buffer.toString('utf-8');\nconst parsed = JSON.parse(jsonString);\n\nconst kst = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);\nconst dirName = kst.toISOString().replace(/[-T:]/g, '').slice(0, 8) + '-' + kst.toISOString().slice(11, 13);\n\nreturn [{\n  json: {\n    title: parsed.title,\n    text: parsed.text,\n    dirName\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        -180
+      ],
+      "id": "942d32c9-3aff-4c04-b036-5ffacd6a3bfe",
+      "name": "[Code] Parsing Text & Title"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=다음 뉴스 기사를 이미지 슬라이드 영상의 자막으로 사용할 수 있도록 요약해줘.\n\n제목: {{ $json.title }}\n본문: {{ $json.text }}\n\n조건:\n- 이미지 1장당 1문장씩, 총 2문장으로 요약\n- 각 문장은 30자 이내\n- JSON 배열로 출력 (예: [\"문장1\", \"문장2\"])\n- 다른 설명 없이 JSON만 출력"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.7,
+      "position": [
+        620,
+        -180
+      ],
+      "id": "96852c89-e31b-4397-86a4-ec307df379f8",
+      "name": "[OpenAI] Create Subtitles",
+      "credentials": {
+        "openAiApi": {
+          "id": "20wtjuhU8uRfi231",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.first().json.message.content;\nconst subtitles = JSON.parse(content);\n\nconst kst = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);\nconst dirName = kst.toISOString().replace(/[-T:]/g, '').slice(0, 8) + '-' + kst.toISOString().slice(11, 13);\n\nlet srt = '';\nfor (let i = 0; i < subtitles.length; i++) {\n  const start = i * 3;\n  const end = start + 3;\n  const startTime = `00:00:0${start},000`;\n  const endTime = `00:00:0${end},000`;\n  srt += `${i + 1}\\n${startTime} --> ${endTime}\\n${subtitles[i]}\\n\\n`;\n}\n\nreturn [{\n  json: { fileName: 'subtitles.srt', dirName },\n  binary: {\n    data: await this.helpers.prepareBinaryData(\n      Buffer.from(srt, 'utf-8'),\n      'subtitles.srt',\n      'text/plain'\n    ),\n  },\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -180
+      ],
+      "id": "92e47367-5bc0-40cb-8c7e-df049b1e2319",
+      "name": "[Code] Parsing Subtitles"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/app/scripts/{{ $json.dirName }}/subtitles.srt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        -180
+      ],
+      "id": "4d18454a-16c5-4430-9802-cbce9a3a43ff",
+      "name": "[Write Files] Write Subtitle File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/app/images/{{ $json.dirName }}/{{ $json.fileName }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        240
+      ],
+      "id": "f244f32f-ae67-4803-8c38-2c912bf2fef8",
+      "name": "[Write Files] Write Image Files"
+    },
+    {
+      "parameters": {
+        "command": "=sh -c 'DIR=/app/images/{{ $json.dirName }} && SDIR=/app/scripts/{{ $json.dirName }} && ls \"$DIR\"/*.jpg | sort | while read f; do printf \"file '\\''%s'\\''\\nduration 3\\n\" \"$f\"; done > \"$DIR\"/concat.txt && tail -2 \"$DIR\"/concat.txt | head -1 >> \"$DIR\"/concat.txt && ffmpeg -y -f concat -safe 0 -i \"$DIR\"/concat.txt -vf \"scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,subtitles=$SDIR/subtitles.srt:force_style='\\''FontSize=24,PrimaryColour=&Hffffff&'\\''\" -c:v libx264 -pix_fmt yuv420p -r 30 /app/videos/{{ $json.dirName }}/shorts.mp4'"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        40
+      ],
+      "id": "d53c28e7-1179-4cf0-9af4-e06dad09b0b7",
+      "name": "[Execute Command] Video Generator"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking 'Test workflow'": {
+      "main": [
+        [
+          {
+            "node": "[Read File] Read Input File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Read File] Read Input File": {
+      "main": [
+        [
+          {
+            "node": "[Code] Parsing Text & Title",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "[Code] Parsing Image Url",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "[Execute Command] Create Timestamp directory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Code] Parsing Image Url": {
+      "main": [
+        [
+          {
+            "node": "[Write Files] Write Image Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Code] Parsing Text & Title": {
+      "main": [
+        [
+          {
+            "node": "[OpenAI] Create Subtitles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[OpenAI] Create Subtitles": {
+      "main": [
+        [
+          {
+            "node": "[Code] Parsing Subtitles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Code] Parsing Subtitles": {
+      "main": [
+        [
+          {
+            "node": "[Write Files] Write Subtitle File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Write Files] Write Subtitle File": {
+      "main": [
+        [
+          {
+            "node": "[Execute Command] Video Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Write Files] Write Image Files": {
+      "main": [
+        [
+          {
+            "node": "[Execute Command] Video Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3a795130-4a48-431c-b6e2-e7a2fdfc0df2",
+  "meta": {
+    "instanceId": "6254aba8a10512e33a5fe5ebc0cf8f221ba62b3999bea3cf7cef43ee4891727a"
+  },
+  "id": "zzkbaQONITMqWkee",
+  "tags": []
+}

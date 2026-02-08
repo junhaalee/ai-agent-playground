@@ -1,0 +1,28 @@
+services:
+  n8n:
+    build: ./n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_RESTRICT_FILE_ACCESS_TO=/app
+    volumes:
+      - videos:/app/videos
+      - images:/app/images
+      - scripts:/app/scripts
+      - n8n_data:/home/node/.n8n
+      - ./n8n/input.json:/app/inputs/input.json # 테스트용 mount
+
+  python:
+    build: ./python
+    environment:
+      - PYTHONUNBUFFERED=1 # println Docker 로그에 바로 출력되도록
+    volumes:
+      - videos:/app/videos
+      - ./python/resources/client_secret.json:/app/client_secret.json
+      - ./python/resources/token.json:/app/token.json
+
+volumes:
+  videos:
+  images:
+  scripts:
+  n8n_data:

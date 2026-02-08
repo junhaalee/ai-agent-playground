@@ -6,7 +6,7 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -40,
+        20,
         20
       ],
       "id": "fe894e12-3e68-44b8-9e0f-0c6fe07dbe11",
@@ -22,7 +22,7 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
       "position": [
-        160,
+        460,
         20
       ],
       "id": "df6495dc-2c65-4829-b0ee-10407307b90a",
@@ -35,7 +35,7 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        440,
+        240,
         20
       ],
       "id": "01e15182-7368-4882-afe4-a781f6697e43",
@@ -48,8 +48,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        440,
-        240
+        660,
+        140
       ],
       "id": "05460960-3837-4b71-a392-bfb8c9c3e38f",
       "name": "[Code] Parsing Image Url"
@@ -61,8 +61,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        440,
-        -180
+        660,
+        -100
       ],
       "id": "942d32c9-3aff-4c04-b036-5ffacd6a3bfe",
       "name": "[Code] Parsing Text & Title"
@@ -87,14 +87,14 @@
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.7,
       "position": [
-        620,
-        -180
+        840,
+        -100
       ],
       "id": "96852c89-e31b-4397-86a4-ec307df379f8",
       "name": "[OpenAI] Create Subtitles",
       "credentials": {
         "openAiApi": {
-          "id": "20wtjuhU8uRfi231",
+          "id": "wLHFJ2L03jB3QBGx",
           "name": "OpenAi account"
         }
       }
@@ -106,8 +106,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        960,
-        -180
+        1180,
+        -100
       ],
       "id": "92e47367-5bc0-40cb-8c7e-df049b1e2319",
       "name": "[Code] Parsing Subtitles"
@@ -121,8 +121,8 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
       "position": [
-        1180,
-        -180
+        1400,
+        -100
       ],
       "id": "4d18454a-16c5-4430-9802-cbce9a3a43ff",
       "name": "[Write Files] Write Subtitle File"
@@ -136,8 +136,8 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
       "position": [
-        1180,
-        240
+        1400,
+        140
       ],
       "id": "f244f32f-ae67-4803-8c38-2c912bf2fef8",
       "name": "[Write Files] Write Image Files"
@@ -149,8 +149,8 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        1500,
-        40
+        1580,
+        20
       ],
       "id": "d53c28e7-1179-4cf0-9af4-e06dad09b0b7",
       "name": "[Execute Command] Video Generator"
@@ -162,7 +162,7 @@
       "main": [
         [
           {
-            "node": "[Read File] Read Input File",
+            "node": "[Execute Command] Create Timestamp directory",
             "type": "main",
             "index": 0
           }
@@ -179,11 +179,6 @@
           },
           {
             "node": "[Code] Parsing Image Url",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "[Execute Command] Create Timestamp directory",
             "type": "main",
             "index": 0
           }
@@ -255,15 +250,26 @@
           }
         ]
       ]
+    },
+    "[Execute Command] Create Timestamp directory": {
+      "main": [
+        [
+          {
+            "node": "[Read File] Read Input File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "3a795130-4a48-431c-b6e2-e7a2fdfc0df2",
+  "versionId": "e20301cb-66de-4bb5-bc0f-2b4309d3b448",
   "meta": {
-    "instanceId": "6254aba8a10512e33a5fe5ebc0cf8f221ba62b3999bea3cf7cef43ee4891727a"
+    "instanceId": "cda95b945e815ac0bd27d23f5ed69d25d32fa3e6af85f8c2cbbe2f42e81c21c3"
   },
   "id": "zzkbaQONITMqWkee",
   "tags": []

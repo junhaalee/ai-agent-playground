@@ -1,7 +1,6 @@
 client_secret.json
 token.json
 api-key.txt
-workflow.png
 venv/
 .idea/
 __pycache__/

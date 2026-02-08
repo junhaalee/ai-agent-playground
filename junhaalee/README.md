@@ -38,7 +38,17 @@ docker compose up -d --build
 ```
 
 - n8n: http://localhost:5678
+- 최초 실행 시 owner 계정 등록 필요
 - OpenAI credential은 n8n 웹에서 수동 등록 필요
+
+### 로컬 Python 실행
+
+```bash
+cd junhaalee/python
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
 ## 프로젝트 구조
 

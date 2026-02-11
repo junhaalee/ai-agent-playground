@@ -1,0 +1,22 @@
+# Environment & Secrets
+.env
+client_secret.json
+youtube_token.json
+
+# Large files
+*.wav
+
+# OS files
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Output & Temp
+output/
+temp/
+
+# Claude
+.claude/

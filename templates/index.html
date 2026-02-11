@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유튜브 쇼츠 자동화 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>유튜브 쇼츠 자동화 시스템</h1>
+        </header>
+
+        <div class="actions">
+            <button id="btn-fetch" class="btn btn-primary">최신 화제 가져오기</button>
+            <button id="btn-generate" class="btn btn-secondary" disabled>쇼츠 생성하기</button>
+        </div>
+
+        <div class="main-content">
+            <section class="panel options-panel">
+                <h2>영상 옵션</h2>
+
+                <div class="option-group">
+                    <label class="option-label" for="duration">영상길이</label>
+                    <select id="duration">
+                        <option value="10-20">10~20초</option>
+                        <option value="20-30" selected>20~30초</option>
+                        <option value="30-40">30~40초</option>
+                    </select>
+                </div>
+
+                <div class="option-group">
+                    <label class="option-label" for="subtitle-pos">자막위치</label>
+                    <select id="subtitle-pos">
+                        <option value="top">상단</option>
+                        <option value="middle">중간</option>
+                        <option value="bottom" selected>하단</option>
+                    </select>
+                </div>
+
+                <div class="option-group">
+                    <label class="option-label" for="bgm">배경음악</label>
+                    <select id="bgm">
+                        <option value="none">없음</option>
+                        <option value="epic">웅장</option>
+                        <option value="calm">잔잔</option>
+                        <option value="cheerful">명랑</option>
+                        <option value="exciting">신남</option>
+                        <option value="dreamy">몽환</option>
+                    </select>
+                </div>
+
+                <div class="option-group">
+                    <label class="option-label" for="speed">영상속도</label>
+                    <select id="speed">
+                        <option value="slow">느리게</option>
+                        <option value="normal" selected>중간</option>
+                        <option value="fast">속도감있게</option>
+                        <option value="very-fast">매우빠르게</option>
+                    </select>
+                </div>
+            </section>
+
+            <section class="panel issues-panel">
+                <h2>화제 목록</h2>
+                <div id="issues-container">
+                    <p class="placeholder-text">「최신 화제 가져오기」 버튼을 눌러 최신 이슈를 불러오세요.</p>
+                </div>
+                <div id="loading-spinner" class="spinner hidden">
+                    <div class="spinner-circle"></div>
+                    <p>뉴스를 분석하고 있습니다...</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- Progress Section -->
+        <section id="progress-section" class="panel progress-panel hidden">
+            <h2>영상 생성 진행</h2>
+            <div class="progress-bar-container">
+                <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+            </div>
+            <p id="progress-text" class="progress-text">준비 중...</p>
+        </section>
+
+        <!-- Completion Section -->
+        <section id="completion-section" class="panel completion-panel hidden">
+            <h2>영상 생성 완료</h2>
+            <p class="completion-msg">쇼츠 영상이 생성되었습니다.</p>
+            <div class="upload-form">
+                <div class="option-group">
+                    <label class="option-label" for="video-title">영상 제목</label>
+                    <input type="text" id="video-title" placeholder="유튜브에 업로드할 제목을 입력하세요" />
+                </div>
+                <div class="option-group">
+                    <label class="option-label" for="video-desc">영상 설명</label>
+                    <textarea id="video-desc" rows="3" placeholder="영상 설명 (선택사항)"></textarea>
+                </div>
+                <button id="btn-upload" class="btn btn-upload">유튜브 업로드</button>
+            </div>
+            <div id="upload-result" class="hidden"></div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

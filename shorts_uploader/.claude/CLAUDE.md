@@ -44,7 +44,7 @@ Read File ─┬─ Code (이미지 다운로드)  → Write File → Execute Co
 ## 실행
 
 ```bash
-cd junhaalee
+cd shorts_uploader
 docker compose up -d --build
 ```
 

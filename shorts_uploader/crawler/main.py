@@ -14,7 +14,7 @@ CRON_SCHEDULE = os.getenv("CRON_SCHEDULE")
 def send_to_webhook(data: dict) -> None:
     """n8n webhook으로 크롤링 결과를 POST 전송."""
     try:
-        resp = requests.post(N8N_WEBHOOK_URL, json=data, timeout=10)
+        resp = requests.post(N8N_WEBHOOK_URL, json=data, timeout=300)
         print(f"[Webhook] {resp.status_code} → {N8N_WEBHOOK_URL}")
     except requests.RequestException as e:
         print(f"[Webhook] 전송 실패: {e}")

@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone, timedelta
 
 import requests
 from bs4 import BeautifulSoup
@@ -58,7 +59,7 @@ class NaverNewsCrawler:
                 href = el.get_attribute("href")
                 if href:
                     urls.append(href)
-            return urls
+            return urls[:3]
         finally:
             driver.quit()
 
@@ -77,7 +78,10 @@ class NaverNewsCrawler:
             text = ""
         images = self._parse_images(body)
 
-        return {"image": images, "title": title, "text": text}
+        kst = datetime.now(timezone(timedelta(hours=9)))
+        prefix = kst.strftime("%Y%m%d%H")
+        article_id = prefix + "_" + "_".join(url.rstrip("/").split("/")[-2:])
+        return {"article_id": article_id, "image": images, "title": title, "text": text}
 
     def _parse_title(self, soup: BeautifulSoup) -> str:
         el = soup.select_one(ARTICLE_TITLE_SELECTOR)

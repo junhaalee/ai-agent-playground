@@ -1,4 +1,5 @@
 import os
+import time
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -64,7 +65,22 @@ def upload_video(youtube, file_path, title, description, tags, category_id="22",
     print(f"업로드 완료: [{title}] https://www.youtube.com/watch?v={response['id']}")
     return response
 
+def wait_for_file_ready(file_path, interval=2, stable_count=3):
+    """파일 크기가 변하지 않을 때까지 대기"""
+    count = 0
+    prev_size = -1
+    while count < stable_count:
+        size = os.path.getsize(file_path)
+        if size > 0 and size == prev_size:
+            count += 1
+        else:
+            count = 0
+        prev_size = size
+        time.sleep(interval)
+    print(f"파일 준비 완료: {file_path} ({prev_size} bytes)")
+
 def handle_new_video(file_path):
+    wait_for_file_ready(file_path)
     youtube = get_authenticated_service()
     title = os.path.splitext(os.path.basename(file_path))[0]
 

@@ -11,7 +11,6 @@ def _handler(callback):
                 return
             if event.src_path.endswith(".mp4"):
                 print(f"새 영상 감지: {event.src_path}")
-                time.sleep(5)  # 파일 쓰기 완료 대기
                 callback(event.src_path)
 
     return _Handler()

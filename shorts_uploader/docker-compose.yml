@@ -17,6 +17,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - N8N_WEBHOOK_URL=http://n8n:5678/webhook/news-crawler
+      - CRON_SCHEDULE=0 */6 * * *
     depends_on:
       - n8n
 

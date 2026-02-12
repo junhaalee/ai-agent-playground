@@ -6,6 +6,7 @@
 ## 구조
 
 - `junhaalee/` — 메인 프로젝트 디렉토리
+  - `crawler/` — 뉴스 크롤러 (BeautifulSoup)
   - `n8n/` — n8n 워크플로우 (영상 생성)
   - `python/` — YouTube 업로드 (watchdog)
 
@@ -13,13 +14,14 @@
 
 | 서비스 | 역할 |
 |--------|------|
+| crawler (3.12-slim) | 네이버 뉴스 크롤링 → n8n webhook으로 JSON 전송 |
 | n8n (v1.70.3) | Input JSON → 이미지 다운로드 → OpenAI 자막 생성 → ffmpeg 영상 생성 |
 | python (3.12-slim) | /app/videos/ 감시 → YouTube 자동 업로드 |
 
 ## 파이프라인
 
 ```
-[Input JSON] → [n8n Workflow] → [ffmpeg 영상] → [Python Watchdog] → [YouTube 업로드]
+[Crawler] → [Webhook POST] → [n8n Workflow] → [ffmpeg 영상] → [Python Watchdog] → [YouTube 업로드]
 ```
 
 ## n8n 워크플로우 (3개 병렬 분기)

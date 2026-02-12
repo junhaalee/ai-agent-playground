@@ -12,10 +12,18 @@ services:
       - n8n_data:/home/node/.n8n
       - ./n8n/input.json:/app/inputs/input.json # 테스트용 mount
 
+  crawler:
+    build: ./crawler
+    environment:
+      - PYTHONUNBUFFERED=1
+      - N8N_WEBHOOK_URL=http://n8n:5678/webhook/news-crawler
+    depends_on:
+      - n8n
+
   python:
     build: ./python
     environment:
-      - PYTHONUNBUFFERED=1 # println Docker 로그에 바로 출력되도록
+      - PYTHONUNBUFFERED=1
     volumes:
       - videos:/app/videos
       - ./python/resources/client_secret.json:/app/client_secret.json

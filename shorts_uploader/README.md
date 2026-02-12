@@ -45,7 +45,7 @@ docker compose up -d --build
 ### 로컬 Python 실행
 
 ```bash
-cd junhaalee/python
+cd junhaalee/uploader
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt

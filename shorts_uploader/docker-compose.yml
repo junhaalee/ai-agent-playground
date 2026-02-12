@@ -21,14 +21,14 @@ services:
     depends_on:
       - n8n
 
-  python:
-    build: ./python
+  uploader:
+    build: ./uploader
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
       - videos:/app/videos
-      - ./python/resources/client_secret.json:/app/client_secret.json
-      - ./python/resources/token.json:/app/token.json
+      - ./uploader/resources/client_secret.json:/app/client_secret.json
+      - ./uploader/resources/token.json:/app/token.json
 
 volumes:
   videos:

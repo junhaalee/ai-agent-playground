@@ -3,7 +3,7 @@
 
 사용법:
   pip install google-auth google-auth-oauthlib
-  python generate_token.py
+  uploader generate_token.py
 
 """
 

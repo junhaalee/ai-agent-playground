@@ -20,7 +20,7 @@
 ![workflow.png](workflow.png)
 
 - 이미지 슬라이드 + 한글 자막 → `shorts.mp4` 생성
-- 파일 저장 경로: `/app/{images|scripts|videos}/{yyyyMMdd-HH}/` (KST 기준)
+- 파일 저장 경로: `/app/{images|scripts|videos}/{yyyyMMddHH_articleId}/` (KST 기준)
 - web에서 workflow 수정 시에 workflow.json 최신화 필요
 
 ## 공유 볼륨
@@ -35,21 +35,18 @@
 ## 실행
 
 ```bash
-docker compose up -d --build
+docker compose up -d n8n
 ```
-
+- n8n init setting
 - n8n: http://localhost:5678
 - 최초 실행 시 owner 계정 등록 필요
 - OpenAI credential은 n8n 웹에서 수동 등록 필요
-
-### 로컬 Python 실행
+- Status를 Active로 세팅해줘야 Webhook 동작
 
 ```bash
-cd junhaalee/uploader
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+docker compose up -d --build
 ```
+- n8n setting 이후에 crawler/uploader 실행
 
 ## 크롤러 설정
 

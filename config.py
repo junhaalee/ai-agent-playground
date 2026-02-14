@@ -5,6 +5,7 @@ load_dotenv()
 
 NAVER_CLIENT_ID = os.getenv("NAVER_CLIENT_ID")
 NAVER_CLIENT_SECRET = os.getenv("NAVER_CLIENT_SECRET")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Video dimensions (YouTube Shorts = 9:16)
 SHORTS_WIDTH = 1080

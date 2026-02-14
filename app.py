@@ -1,8 +1,11 @@
+import logging
 from flask import Flask, render_template, jsonify, request
 from services.news_collector import collect_news
 from services.issue_analyzer import analyze_issues
 from services.video_creator import generate_shorts, get_job_status
 from services.youtube_uploader import upload_video
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 
 app = Flask(__name__)
 
@@ -19,13 +22,17 @@ def index():
 def fetch_issues():
     global _cached_issues
     try:
-        articles = collect_news()
+        articles, keyword_log = collect_news()
         if not articles:
             return jsonify({"error": "뉴스를 가져오지 못했습니다. API 키를 확인해주세요."}), 500
 
         issues = analyze_issues(articles)
         _cached_issues = issues
-        return jsonify({"issues": issues, "article_count": len(articles)})
+        return jsonify({
+            "issues": issues,
+            "article_count": len(articles),
+            "keyword_log": keyword_log,
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

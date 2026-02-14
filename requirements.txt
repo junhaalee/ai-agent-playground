@@ -6,3 +6,5 @@ edge-tts
 Pillow
 google-auth-oauthlib
 google-api-python-client
+trendspyg
+google-generativeai

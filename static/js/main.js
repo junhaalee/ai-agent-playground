@@ -33,6 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
+            renderKeywordLog(data.keyword_log);
             renderIssues(data.issues, data.article_count);
         } catch (err) {
             spinner.classList.add("hidden");
@@ -191,6 +192,42 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // --- Render Keyword Log ---
+    function renderKeywordLog(log) {
+        if (!log) return;
+
+        let html = `<div class="keyword-log">`;
+
+        // 트렌딩 키워드 — 항상 표시
+        if (log.trending_keywords && log.trending_keywords.length > 0) {
+            html += `<div class="keyword-log-item">
+                <span class="keyword-log-label">트렌딩 키워드</span>
+                <span class="keyword-log-value">${log.trending_keywords.map(k => escapeHtml(k)).join(", ")}</span>
+            </div>`;
+        } else {
+            html += `<div class="keyword-log-item fallback">
+                <span class="keyword-log-label">트렌딩 키워드</span>
+                <span class="keyword-log-value">수집 실패</span>
+            </div>`;
+        }
+
+        // 선별된 정치 키워드 + 보충 핫 키워드
+        const politicalTags = (log.political_keywords || []).map(k =>
+            `<span class="keyword-tag${log.is_fallback ? " fallback-tag" : ""}">${escapeHtml(k)}</span>`
+        ).join(" ");
+        const hotTags = (log.hot_keywords || []).map(k =>
+            `<span class="keyword-tag hot-tag">${escapeHtml(k)}</span>`
+        ).join(" ");
+        html += `<div class="keyword-log-item">
+            <span class="keyword-log-label">검색 키워드</span>
+            <span class="keyword-log-value political">${politicalTags} ${hotTags}</span>
+            ${log.is_fallback ? '<span class="keyword-fallback-badge">fallback</span>' : ""}
+        </div>`;
+
+        html += `</div>`;
+        issuesContainer.innerHTML = html;
+    }
+
     // --- Render Issues ---
     function renderIssues(issues, articleCount) {
         if (!issues || issues.length === 0) {
@@ -218,7 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
             html += `<div class="article-count">총 ${articleCount}개 기사 분석 완료</div>`;
         }
 
-        issuesContainer.innerHTML = html;
+        issuesContainer.insertAdjacentHTML("beforeend", html);
         updateGenerateButton();
     }
 

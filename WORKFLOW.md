@@ -40,26 +40,40 @@
 **API**: `POST /api/fetch-issues`
 
 ```
-Step 1                          Step 2                       Step 3
-뉴스 수집                        이슈 클러스터링                UI 표시
-(news_collector.py)             (issue_analyzer.py)
+Step 1-a                 Step 1-b                Step 1-c
+트렌딩 키워드 수집        정치 키워드 필터링         뉴스 수집
+(trendspyg)             (Gemini API)            (네이버 뉴스 API)
 
- 네이버 뉴스 API                 키워드 추출                   화제 목록
- ┌──────────────┐               (한글 2글자 이상,             (최대 5개 토픽)
- │ 검색 키워드:   │               불용어 제거)                  ┌──────────┐
- │ 정치, 국회,   │──▶ 기사 목록 ──▶                            │ □ 이슈 1  │
- │ 대통령, 여당, │   (중복 제거,       ▼                       │ □ 이슈 2  │
- │ 야당          │    7일 이내)                                │ □ 이슈 3  │
- └──────────────┘              유사도 기반 그룹핑              │ □ 이슈 4  │
-                               (Jaccard ≥ 0.15)              │ □ 이슈 5  │
- 각 키워드 100건 검색                   ▼                      └──────────┘
-                               기사 수 기준 랭킹
-                               (많이 다뤄진 순)
+ Google Trends KR        Gemini 2.0 Flash
+ ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+ │ trending_now │       │ 트렌딩 ~20개  │       │ 선별된 정치   │
+ │ (geo="KR")   │──▶    │ 키워드 중     │──▶    │ 키워드 3개로  │──▶ 기사 목록
+ │              │       │ 정치 관련 3개  │       │ 각 100건 검색 │   (중복 제거,
+ └──────────────┘       │ 선별          │       └──────────────┘    7일 이내)
+                        └──────────────┘
+ ※ 실패 시 fallback:                             각 키워드 100건 검색
+   "정치","국회","대통령","여당","야당"
+
+Step 2                       Step 3
+이슈 클러스터링                UI 표시
+(issue_analyzer.py)
+
+ 키워드 추출                   화제 목록
+ (한글 2글자 이상,             (최대 3개 토픽)
+  불용어 제거)                  ┌──────────┐
+                               │ □ 이슈 1  │
+       ▼                       │ □ 이슈 2  │
+                               │ □ 이슈 3  │
+ 유사도 기반 그룹핑              └──────────┘
+ (Jaccard ≥ 0.15)
+       ▼
+ 기사 수 기준 랭킹
+ (많이 다뤄진 순)
 ```
 
 **핵심 로직:**
-- `collect_news()` → 5개 키워드 × 100건 = 최대 500건 수집 (중복·기한 필터링)
-- `analyze_issues()` → 키워드 유사도로 클러스터링 → 상위 5개 토픽 반환
+- `collect_news()` → trendspyg로 실시간 트렌딩 키워드 수집 → Gemini로 정치 키워드 3개 필터링 → 네이버 검색 API 호출 (실패 시 fallback 키워드 5개 사용)
+- `analyze_issues()` → 키워드 유사도로 클러스터링 → 상위 3개 토픽 반환
 - 각 토픽: 제목(상위 키워드 3개), 요약(가장 짧은 기사 제목), 관련 기사 목록
 
 ---
@@ -194,7 +208,7 @@ shorts_auto/
 ├── output/                     # 생성된 영상 저장 디렉토리
 ├── temp/                       # 작업 중 임시 파일 디렉토리
 │
-├── .env                        # (gitignore) NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
+├── .env                        # (gitignore) NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, GEMINI_API_KEY
 ├── client_secret.json          # (gitignore) Google OAuth 클라이언트 시크릿
 └── youtube_token.json          # (gitignore) YouTube 인증 토큰
 ```
@@ -205,6 +219,8 @@ shorts_auto/
 
 | 서비스/도구 | 용도 | 설정 |
 |---|---|---|
+| **Google Trends (trendspyg)** | 실시간 트렌딩 키워드 수집 | 별도 설정 불필요 |
+| **Gemini API** | 트렌딩 키워드 중 정치 관련 필터링 | `.env`에 `GEMINI_API_KEY` |
 | **네이버 뉴스 API** | 뉴스 기사 수집 | `.env`에 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` |
 | **Edge TTS** | 한국어 음성 합성 (무료) | 음성: `ko-KR-InJoonNeural` |
 | **Playwright** | 기사 페이지 스크린샷 | `playwright install chromium` 필요 |

@@ -57,9 +57,9 @@ def analyze_issues(articles):
     # Step 3: Rank by article count (most discussed first)
     clusters.sort(key=lambda c: len(c), reverse=True)
 
-    # Step 4: Build top 5 topics
+    # Step 4: Build top 3 topics
     topics = []
-    for cluster in clusters[:5]:
+    for cluster in clusters[:3]:
         cluster_articles = [a for a, _ in cluster]
         cluster_keywords = [kw for _, kws in cluster for kw in kws]
 

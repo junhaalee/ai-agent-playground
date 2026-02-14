@@ -186,6 +186,78 @@ select:focus {
     margin-top: 12px;
 }
 
+/* Keyword Log */
+.keyword-log {
+    background: #f8f9ff;
+    border: 1px solid #e0e4f2;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    font-size: 0.85rem;
+}
+
+.keyword-log-item {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    margin-bottom: 6px;
+}
+
+.keyword-log-item:last-child {
+    margin-bottom: 0;
+}
+
+.keyword-log-label {
+    font-weight: 600;
+    color: #555;
+    white-space: nowrap;
+    min-width: 120px;
+}
+
+.keyword-log-value {
+    color: #333;
+    line-height: 1.6;
+}
+
+.keyword-log-item.fallback .keyword-log-value {
+    color: #e67e22;
+}
+
+.keyword-tag {
+    display: inline-block;
+    background: #4361ee;
+    color: #fff;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+.keyword-tag.hot-tag {
+    background: transparent;
+    color: #999;
+    border: 1px solid #ddd;
+    text-decoration: line-through;
+    text-decoration-color: #e74c3c;
+    text-decoration-thickness: 2px;
+}
+
+.keyword-tag.fallback-tag {
+    background: #e67e22;
+}
+
+.keyword-fallback-badge {
+    display: inline-block;
+    background: #ffecd2;
+    color: #e67e22;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 6px;
+}
+
 /* Spinner */
 .spinner {
     display: flex;

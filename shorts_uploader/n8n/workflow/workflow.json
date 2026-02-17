@@ -54,7 +54,7 @@
       "name": "[OpenAI] Create Subtitles",
       "credentials": {
         "openAiApi": {
-          "id": "yaRsi1blubb9MEaO",
+          "id": "IthKy6OilO6PuSbF",
           "name": "OpenAi account"
         }
       }
@@ -104,7 +104,7 @@
     },
     {
       "parameters": {
-        "command": "=sh -c 'DIR=/app/images/{{ $json.dirName }} && SDIR=/app/scripts/{{ $json.dirName }} && TITLE=\"{{ $('[Code] Parsing Text & Title').first().json.title }}\" && ls \"$DIR\"/*.jpg | sort | while read f; do printf \"file '\\''%s'\\''\\nduration 3\\n\" \"$f\"; done > \"$DIR\"/concat.txt && tail -2 \"$DIR\"/concat.txt | head -1 >> \"$DIR\"/concat.txt && ffmpeg -y -f concat -safe 0 -i \"$DIR\"/concat.txt -ss 40 -i /app/bgm/bgm.mp3 -filter_complex \"[1:a]volume=0.3\" -vf \"scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,subtitles=$SDIR/subtitles.srt:force_style='\\''FontName=Noto Sans CJK KR,FontSize=15,PrimaryColour=&Hffffff&'\\''\" -c:v libx264 -pix_fmt yuv420p -preset slow -crf 18 -b:v 8M -r 30 -shortest /app/videos/{{ $json.dirName }}/\"$TITLE\".mp4'"
+        "command": "=sh -c 'DIR=/app/images/{{ $json.dirName }} && SDIR=/app/scripts/{{ $json.dirName }} && TITLE=\"{{ $('[Code] Parsing Text & Title').first().json.title }}\" && ls \"$DIR\"/*.jpg | sort | while read f; do printf \"file '\\''%s'\\''\\nduration 3\\n\" \"$f\"; done > \"$DIR\"/concat.txt && tail -2 \"$DIR\"/concat.txt | head -1 >> \"$DIR\"/concat.txt && ffmpeg -y -f concat -safe 0 -i \"$DIR\"/concat.txt -ss 40 -i /app/bgm/bgm.mp3 -filter_complex \"[1:a]volume=0.3\" -vf \"scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,subtitles=$SDIR/subtitles.srt:fontsdir=/usr/share/fonts/custom:force_style='\\''FontName=Gmarket Sans TTF,FontSize=14,Bold=0,Alignment=2,MarginV=50,Outline=1,Shadow=0,Spacing=1'\\'' ,drawtext=fontfile=/usr/share/fonts/custom/GmarketSansTTFBold.ttf:text='\\''오늘의 해외축구 한줄요약'\\'':x=(w-text_w)/2:y=200:fontsize=80:fontcolor=white:borderw=2:bordercolor=black\" -c:v libx264 -pix_fmt yuv420p -preset slow -crf 18 -b:v 8M -r 30 -shortest /app/videos/{{ $json.dirName }}/\"$TITLE\".mp4'"
       },
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
@@ -267,13 +267,13 @@
       ]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {
     "executionOrder": "v0"
   },
-  "versionId": "90611f6c-f510-4d09-850c-c05bb91c3db1",
+  "versionId": "109f8af7-f454-4c41-8eb4-213229781e33",
   "meta": {
-    "instanceId": "0531f688e91babc7862c4a6eb98f165ab6a03d7b4d18b0ae6e0a7f32af4579ee"
+    "instanceId": "aa17e30c75608c4d2dbebeb5716dc535334c0adda3a13a3cf982717f182cc089"
   },
   "id": "zzkbaQONITMqWkee",
   "tags": []

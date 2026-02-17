@@ -39,7 +39,7 @@ def get_authenticated_service():
 
     return build("youtube", "v3", credentials=creds)
 
-def upload_video(youtube, file_path, title, description, tags, category_id="22", privacy="private"):
+def upload_video(youtube, file_path, title, description, tags, category_id="22", privacy="public"):
     body = {
         "snippet": {
             "title": title,
@@ -90,8 +90,8 @@ def handle_new_video(file_path):
         file_path=file_path,
         title=title,
         description="",
-        tags=[""],
-        privacy="private",
+        tags=["해외축구","프리미어리그","EPL","프리메라리그","LALIGA","분데스리그","BUNDES","세리에A","SERIA","맨유","첼시","맨시티","아스날","리버풀","토트넘"],
+        privacy="public",
     )
 
 if __name__ == "__main__":

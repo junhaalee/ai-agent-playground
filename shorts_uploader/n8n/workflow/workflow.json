@@ -16,7 +16,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const title = $('Webhook').first().json.body.title;\nconst text = $('Webhook').first().json.body.text;\nconst dirName = $('Webhook').first().json.body.article_id;\n\nreturn [{\n  json: {\n    title: title,\n    text: text,\n    dirName\n  }\n}];\n"
+        "jsCode": "const title = $('Webhook').first().json.body.title;\nconst text = $('Webhook').first().json.body.text;\nconst dirName = $('Webhook').first().json.body.article_id;\n\n// 파일명에 쓸 수 없는 문자 제거\nconst safeTitle = title.replace(/[\\/\\\\:\"<>|?*']/g, '');\n\nreturn [{\n  json: {\n    title: safeTitle,\n    text: text,\n    dirName\n  }\n}];\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -38,7 +38,7 @@
         "messages": {
           "values": [
             {
-              "content": "=다음 뉴스 기사를 이미지 슬라이드 영상(15초)의 자막으로 사용할 수 있도록 요약해줘.\n\n제목: {{ $json.title }}\n본문: {{ $json.text }}\n이미지 : {{ $json.image }}\n\n조건:\n- 이미지 1장당 1문장 이상씩\n- 각 문장은 공백 포함 15자 이내\n- 모든 문장은 반드시 \"~다\", \"~했다\", \"~였다\" 등 종결어미로 끝나는 완전한 문장으로 작성\n- 마지막 문장만 \"~ㄹ걸?\", \"~잖아!\", \"~네!\" 같은 구어체로 재밌게 표현\n- JSON 배열로 출력 (예: [\"문장1\", \"문장2\"])\n- 다른 설명 없이 JSON만 출력"
+              "content": "=다음 해외축구 기사를 기반으로\n유튜브 쇼츠(15초) 자막을 작성해줘.\n\n목표:\n- 스크롤을 멈추게 하는 훅 포함\n- 기사 내용을 벗어나지 않는 범위에서만 구성\n- 없는 정보, 추측, 해석, 배경 설명 절대 추가 금지\n\n제목: {{ $json.title }}\n본문: {{ $json.text }}\n\n절대 규칙:\n1. 기사에 명시된 사실만 사용\n2. 기사에 없는 수치, 인물 발언, 원인 추측 추가 금지\n3. \"전망이다\", \"가능성 있다\" 같은 표현은 기사에 있을 때만 사용\n4. 감정 단어는 기사 맥락 안에서만 사용\n5. 루머 기사라면 반드시 '보도됐다', '전해졌다' 등 기사 표현 유지\n\n작성 규칙:\n- 총 8~12문장\n- 각 문장 12~18자 내외\n- 첫 문장은 강한 훅\n- 짧고 리듬감 있게\n- 마지막은 여운 있는 구어체\n- 과장 금지\n- 이모지 금지\n\n출력:\nJSON 배열만 출력"
             }
           ]
         },
@@ -54,7 +54,7 @@
       "name": "[OpenAI] Create Subtitles",
       "credentials": {
         "openAiApi": {
-          "id": "ZiGAZnjIuMhYzOss",
+          "id": "yaRsi1blubb9MEaO",
           "name": "OpenAi account"
         }
       }
@@ -104,7 +104,7 @@
     },
     {
       "parameters": {
-        "command": "=sh -c 'DIR=/app/images/{{ $json.dirName }} && SDIR=/app/scripts/{{ $json.dirName }} && ls \"$DIR\"/*.jpg | sort | while read f; do printf \"file '\\''%s'\\''\\nduration 3\\n\" \"$f\"; done > \"$DIR\"/concat.txt && tail -2 \"$DIR\"/concat.txt | head -1 >> \"$DIR\"/concat.txt && ffmpeg -y -f concat -safe 0 -i \"$DIR\"/concat.txt -vf \"scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,subtitles=$SDIR/subtitles.srt:force_style='\\''FontName=Noto Sans CJK KR,FontSize=15,PrimaryColour=&Hffffff&'\\''\" -c:v libx264 -pix_fmt yuv420p -preset slow -crf 18 -b:v 8M -r 30 /app/videos/{{ $json.dirName }}/shorts.mp4'"
+        "command": "=sh -c 'DIR=/app/images/{{ $json.dirName }} && SDIR=/app/scripts/{{ $json.dirName }} && TITLE=\"{{ $('[Code] Parsing Text & Title').first().json.title }}\" && ls \"$DIR\"/*.jpg | sort | while read f; do printf \"file '\\''%s'\\''\\nduration 3\\n\" \"$f\"; done > \"$DIR\"/concat.txt && tail -2 \"$DIR\"/concat.txt | head -1 >> \"$DIR\"/concat.txt && ffmpeg -y -f concat -safe 0 -i \"$DIR\"/concat.txt -ss 40 -i /app/bgm/bgm.mp3 -filter_complex \"[1:a]volume=0.3\" -vf \"scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,subtitles=$SDIR/subtitles.srt:force_style='\\''FontName=Noto Sans CJK KR,FontSize=15,PrimaryColour=&Hffffff&'\\''\" -c:v libx264 -pix_fmt yuv420p -preset slow -crf 18 -b:v 8M -r 30 -shortest /app/videos/{{ $json.dirName }}/\"$TITLE\".mp4'"
       },
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
@@ -271,9 +271,9 @@
   "settings": {
     "executionOrder": "v0"
   },
-  "versionId": "1325bbd6-1a50-41b7-a726-0795f75a7285",
+  "versionId": "90611f6c-f510-4d09-850c-c05bb91c3db1",
   "meta": {
-    "instanceId": "d7b5de7cec998e016e7013fa5d4068d3c8d31cb78334f1552e3e693ffa8f51bb"
+    "instanceId": "0531f688e91babc7862c4a6eb98f165ab6a03d7b4d18b0ae6e0a7f32af4579ee"
   },
   "id": "zzkbaQONITMqWkee",
   "tags": []

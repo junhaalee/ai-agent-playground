@@ -10,14 +10,14 @@ services:
       - images:/app/images
       - scripts:/app/scripts
       - n8n_data:/home/node/.n8n
-      - ./n8n/input.json:/app/inputs/input.json # 테스트용 mount
+      - ./n8n/resources/bgm:/app/bgm
 
   crawler:
     build: ./crawler
     environment:
       - PYTHONUNBUFFERED=1
       - N8N_WEBHOOK_URL=http://n8n:5678/webhook/news-crawler
-      - CRON_SCHEDULE=0 */6 * * *
+      - CRON_SCHEDULE=0 6,18 * * *
     depends_on:
       - n8n
 

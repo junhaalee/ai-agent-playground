@@ -66,16 +66,16 @@ def _get_trending_keywords():
     return []
 
 
-def _filter_political_keywords(trending_items, count=3):
-    """Gemini API로 키워드 목록에서 정치 관련 키워드만 필터링한다.
-    trending_items: [(keyword, traffic, headlines), ...] 형태."""
+def _tag_political_keywords(trending_items):
+    """Gemini API로 각 키워드가 정치 관련인지 여부를 태깅한다.
+    trending_items: [(keyword, traffic, headlines), ...] 형태.
+    반환: 정치 키워드 set"""
     try:
         import google.generativeai as genai
 
         genai.configure(api_key=config.GEMINI_API_KEY)
         model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
-        # 키워드 + 관련 기사 헤드라인을 함께 전달
         keyword_info = []
         for keyword, traffic, headlines in trending_items:
             entry = {"키워드": keyword}
@@ -86,10 +86,10 @@ def _filter_political_keywords(trending_items, count=3):
         prompt = (
             "다음은 한국 실시간 트렌딩 키워드와 관련 기사 헤드라인입니다:\n"
             f"{json.dumps(keyword_info, ensure_ascii=False)}\n\n"
-            f"이 중에서 한국 정치와 관련된 키워드를 최대 {count}개 골라주세요.\n"
+            "각 키워드가 한국 정치와 관련이 있는지 판별해주세요.\n"
             "정치인, 국회, 대통령, 정당, 선거, 법안, 외교, 국방, 지방자치단체장 등 정치와 관련된 것을 선택하세요.\n"
             "인물 이름인 경우 관련 기사 헤드라인을 참고하여 정치인인지 판단하세요.\n"
-            "정치 관련 키워드가 없으면 빈 리스트를 반환하세요.\n"
+            "정치 관련 키워드만 JSON 배열로 반환하세요. 정치 관련 키워드가 없으면 빈 리스트를 반환하세요.\n"
             "반드시 JSON 배열 형식으로만 응답하세요. 예: [\"키워드1\", \"키워드2\"]\n"
             "다른 설명 없이 JSON 배열만 출력하세요."
         )
@@ -97,59 +97,60 @@ def _filter_political_keywords(trending_items, count=3):
         response = model.generate_content(prompt)
         text = response.text.strip()
 
-        # JSON 파싱 — ```json ... ``` 감싸진 경우도 처리
         if text.startswith("```"):
             text = re.sub(r"^```(?:json)?\s*", "", text)
             text = re.sub(r"\s*```$", "", text)
 
         result = json.loads(text)
-        if isinstance(result, list) and len(result) > 0:
-            filtered = result[:count]
-            logger.info(f"[Gemini] 정치 키워드 선별: {filtered}")
-            return filtered
-        logger.warning(f"[Gemini] 정치 키워드 없음 (응답: {text})")
+        if isinstance(result, list):
+            political_set = set(result)
+            logger.info(f"[Gemini] 정치 키워드 태깅: {result}")
+            return political_set
+        logger.warning(f"[Gemini] 정치 키워드 태깅 실패 (응답: {text})")
     except Exception as e:
-        logger.error(f"[Gemini] 필터링 실패: {e}")
-    return []
+        logger.error(f"[Gemini] 태깅 실패: {e}")
+    return set()
 
 
-def _get_trending_political_keywords():
-    """트렌딩 키워드에서 정치 관련 키워드를 선별하고, 부족하면 핫 키워드로 채운다."""
-    TARGET_COUNT = 3
-    trending_items = _get_trending_keywords()  # [(keyword, traffic), ...]
+def get_trending_keywords():
+    """트렌딩 키워드를 수집하고 정치 여부를 태깅하여 반환한다.
+    반환: [{ keyword, traffic, is_political }, ...]"""
+    trending_items = _get_trending_keywords()
 
     if not trending_items:
         logger.warning("[Fallback] 트렌딩 키워드 수집 실패 → 기본 키워드 사용")
-        return [], FALLBACK_QUERIES, FALLBACK_QUERIES, [], True
+        return [
+            {"keyword": q, "traffic": 0, "is_political": True}
+            for q in FALLBACK_QUERIES
+        ], True
 
-    keyword_names = [k for k, _, _ in trending_items]
-    political = _filter_political_keywords(trending_items)
+    political_set = _tag_political_keywords(trending_items)
 
-    # 3개 미만이면 트래픽 높은 순으로 나머지 채우기
-    hot_filled = []
-    if len(political) < TARGET_COUNT:
-        political_set = set(political)
-        hot_candidates = [k for k, _, _ in trending_items if k not in political_set]
-        fill_count = TARGET_COUNT - len(political)
-        hot_filled = hot_candidates[:fill_count]
-        logger.info(f"[키워드 보충] 정치 {len(political)}개 + 핫 트렌딩 {len(hot_filled)}개: {hot_filled}")
+    result = []
+    for keyword, traffic, _headlines in trending_items:
+        result.append({
+            "keyword": keyword,
+            "traffic": traffic,
+            "is_political": keyword in political_set,
+        })
 
-    queries = political + hot_filled
-    return keyword_names, queries, political, hot_filled, False
+    logger.info(f"[트렌딩] {len(result)}개 키워드 (정치 {len(political_set)}개)")
+    return result, False
 
 
-def collect_news():
+def search_news(selected_keywords):
+    """선택된 키워드로 네이버 뉴스 API를 호출하여 기사를 수집한다.
+    selected_keywords: ["키워드1", "키워드2", ...] 형태.
+    반환: articles 리스트"""
     headers = {
         "X-Naver-Client-Id": config.NAVER_CLIENT_ID,
         "X-Naver-Client-Secret": config.NAVER_CLIENT_SECRET,
     }
 
-    trending, queries, political, hot_filled, is_fallback = _get_trending_political_keywords()
-
     seen_titles = set()
     articles = []
 
-    for query in queries:
+    for query in selected_keywords:
         params = {
             "query": query,
             "display": 100,
@@ -180,11 +181,4 @@ def collect_news():
                 "pub_date": item.get("pubDate", ""),
             })
 
-    keyword_log = {
-        "trending_keywords": trending,
-        "political_keywords": political,
-        "hot_keywords": hot_filled,
-        "is_fallback": is_fallback,
-    }
-
-    return articles, keyword_log
+    return articles

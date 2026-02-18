@@ -27,9 +27,5 @@ SPEED_MAP = {
     "very-fast": 1.5,
 }
 
-# Number of articles per duration range
-DURATION_ARTICLE_MAP = {
-    "10-20": 1,
-    "20-30": 2,
-    "30-40": 3,
-}
+# 기사 1개당 할당 시간 (초)
+SECONDS_PER_ARTICLE = 5

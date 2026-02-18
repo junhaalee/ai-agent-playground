@@ -63,6 +63,15 @@ header h1 {
     background: #27a99d;
 }
 
+.btn-search {
+    background: #e67e22;
+    color: #fff;
+}
+
+.btn-search:hover:not(:disabled) {
+    background: #d35400;
+}
+
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -401,6 +410,91 @@ select:focus {
 .success-msg a {
     color: #2980b9;
     text-decoration: underline;
+}
+
+/* Trending Keyword Selection */
+.trending-keywords-section {
+    margin-bottom: 14px;
+}
+
+.trending-keywords-section h3 {
+    font-size: 0.95rem;
+    color: #555;
+    margin-bottom: 10px;
+}
+
+.trending-keywords-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.trending-keyword {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.trending-keyword .traffic {
+    font-size: 0.72rem;
+    font-weight: 400;
+    opacity: 0.8;
+}
+
+.trending-keyword.political {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.trending-keyword.non-political {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.trending-keyword:hover:not(.disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.trending-keyword.selected {
+    border-color: #1a1a2e;
+    box-shadow: 0 0 0 1px #1a1a2e;
+}
+
+.trending-keyword.selected::before {
+    content: "\2713 ";
+}
+
+.trending-keyword.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.keyword-select-info {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: #888;
+    font-weight: 500;
+}
+
+.keyword-select-info .count {
+    color: #4361ee;
+    font-weight: 700;
+}
+
+.keyword-fallback-notice {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: #e67e22;
+    font-weight: 500;
 }
 
 /* Responsive */

@@ -6,8 +6,9 @@ import config
 
 logger = logging.getLogger(__name__)
 
-# Font candidates
+# Font candidates (나눔고딕 Bold 최우선)
 _FONT_CANDIDATES = [
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "fonts", "NanumGothicBold.ttf"),
     "/System/Library/Fonts/Supplemental/AppleGothic.ttf",
     "/System/Library/Fonts/AppleSDGothicNeo.ttc",
     "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",

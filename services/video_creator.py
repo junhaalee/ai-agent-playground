@@ -61,17 +61,21 @@ def _pipeline(job_id, selected_issues, options):
     speed_key = options.get("speed", "normal")
     speed = config.SPEED_MAP.get(speed_key, 1.0)
 
-    num_articles = config.DURATION_ARTICLE_MAP.get(duration_range, 2)
-
     # 영상 예상 길이 (초) — 중간값 사용
     dur_parts = duration_range.split("-")
     estimated_duration = (int(dur_parts[0]) + int(dur_parts[1])) / 2
 
-    # Collect articles from selected issues
+    # 5초당 기사 1개
+    num_articles = max(int(estimated_duration / config.SECONDS_PER_ARTICLE), 1)
+
+    # Collect articles from selected issues (이슈 키워드도 함께 매핑)
     all_articles = []
+    article_issue_keywords = []  # 각 기사가 속한 이슈의 키워드
     for issue in selected_issues:
+        issue_keyword = issue.get("title", "뉴스")
         for a in issue.get("articles", []):
             all_articles.append(a)
+            article_issue_keywords.append(issue_keyword)
             if len(all_articles) >= num_articles:
                 break
         if len(all_articles) >= num_articles:
@@ -108,7 +112,9 @@ def _pipeline(job_id, selected_issues, options):
             audio_dur = _get_audio_duration(audio_paths[i]) if i < len(audio_paths) else estimated_duration
             images_needed = max(int(audio_dur / BG_CHANGE_INTERVAL) + 1, 2)
 
-            keyword = article.get("title", "뉴스")[:10]
+            # 기사 제목으로 이미지 검색 (기사마다 다른 이미지 확보)
+            fallback = article_issue_keywords[i] if i < len(article_issue_keywords) else "뉴스"
+            keyword = article.get("title", "") or fallback
             bg_images = fetch_images(keyword, images_needed, os.path.join(job_dir, f"images_{i}"))
 
             # 배경 이미지에 뉴스 정보 오버레이

@@ -1,6 +1,6 @@
 import logging
 from flask import Flask, render_template, jsonify, request
-from services.news_collector import collect_news
+from services.news_collector import get_trending_keywords, search_news
 from services.issue_analyzer import analyze_issues
 from services.video_creator import generate_shorts, get_job_status
 from services.youtube_uploader import upload_video
@@ -18,11 +18,29 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/api/fetch-issues", methods=["POST"])
-def fetch_issues():
+@app.route("/api/fetch-trending", methods=["POST"])
+def fetch_trending():
+    try:
+        keywords, is_fallback = get_trending_keywords()
+        return jsonify({
+            "keywords": keywords,
+            "is_fallback": is_fallback,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/search-news", methods=["POST"])
+def api_search_news():
     global _cached_issues
     try:
-        articles, keyword_log = collect_news()
+        data = request.get_json()
+        selected_keywords = data.get("selected_keywords", [])
+
+        if not selected_keywords:
+            return jsonify({"error": "키워드를 선택해주세요."}), 400
+
+        articles = search_news(selected_keywords)
         if not articles:
             return jsonify({"error": "뉴스를 가져오지 못했습니다. API 키를 확인해주세요."}), 500
 
@@ -31,9 +49,7 @@ def fetch_issues():
         return jsonify({
             "issues": issues,
             "article_count": len(articles),
-            "keyword_log": keyword_log,
         })
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

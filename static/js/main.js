@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
     const btnFetch = document.getElementById("btn-fetch");
+    const btnSearch = document.getElementById("btn-search");
     const btnGenerate = document.getElementById("btn-generate");
     const issuesContainer = document.getElementById("issues-container");
     const spinner = document.getElementById("loading-spinner");
@@ -10,19 +11,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnUpload = document.getElementById("btn-upload");
     const uploadResult = document.getElementById("upload-result");
 
+    const MAX_SELECTION = 3;
     let currentJobId = null;
     let pollTimer = null;
+    let selectedKeywords = new Set();
 
-    // --- Fetch Issues ---
+    // --- Phase 1: Fetch Trending Keywords ---
     btnFetch.addEventListener("click", async () => {
         btnFetch.disabled = true;
+        btnSearch.disabled = true;
+        btnGenerate.disabled = true;
         issuesContainer.innerHTML = "";
         spinner.classList.remove("hidden");
+        spinner.querySelector("p").textContent = "트렌딩 키워드를 수집하고 있습니다...";
         progressSection.classList.add("hidden");
         completionSection.classList.add("hidden");
+        selectedKeywords.clear();
 
         try {
-            const resp = await fetch("/api/fetch-issues", { method: "POST" });
+            const resp = await fetch("/api/fetch-trending", { method: "POST" });
             const data = await resp.json();
 
             spinner.classList.add("hidden");
@@ -33,7 +40,58 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            renderKeywordLog(data.keyword_log);
+            renderTrendingKeywords(data.keywords, data.is_fallback);
+        } catch (err) {
+            spinner.classList.add("hidden");
+            issuesContainer.innerHTML =
+                `<div class="error-msg">서버에 연결할 수 없습니다.</div>`;
+        } finally {
+            btnFetch.disabled = false;
+        }
+    });
+
+    // --- Phase 2: Search News with Selected Keywords ---
+    btnSearch.addEventListener("click", async () => {
+        if (selectedKeywords.size === 0) {
+            alert("키워드를 하나 이상 선택해주세요.");
+            return;
+        }
+
+        btnSearch.disabled = true;
+        btnFetch.disabled = true;
+        spinner.classList.remove("hidden");
+        spinner.querySelector("p").textContent = "뉴스를 분석하고 있습니다...";
+
+        // Remove keyword selection UI but keep the section visible
+        const keywordSection = issuesContainer.querySelector(".trending-keywords-section");
+
+        try {
+            const resp = await fetch("/api/search-news", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ selected_keywords: Array.from(selectedKeywords) }),
+            });
+            const data = await resp.json();
+
+            spinner.classList.add("hidden");
+
+            if (!resp.ok) {
+                issuesContainer.innerHTML =
+                    `<div class="error-msg">${data.error || "오류가 발생했습니다."}</div>`;
+                return;
+            }
+
+            // Show selected keywords summary + issues
+            const selectedSummary = `<div class="keyword-log">
+                <div class="keyword-log-item">
+                    <span class="keyword-log-label">검색 키워드</span>
+                    <span class="keyword-log-value">${Array.from(selectedKeywords).map(k =>
+                        `<span class="keyword-tag">${escapeHtml(k)}</span>`
+                    ).join(" ")}</span>
+                </div>
+            </div>`;
+            issuesContainer.innerHTML = selectedSummary;
+
             renderIssues(data.issues, data.article_count);
         } catch (err) {
             spinner.classList.add("hidden");
@@ -41,6 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 `<div class="error-msg">서버에 연결할 수 없습니다.</div>`;
         } finally {
             btnFetch.disabled = false;
+            btnSearch.disabled = true;
         }
     });
 
@@ -61,6 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         btnGenerate.disabled = true;
         btnFetch.disabled = true;
+        btnSearch.disabled = true;
         progressSection.classList.remove("hidden");
         completionSection.classList.add("hidden");
         progressBar.style.width = "0%";
@@ -145,7 +205,6 @@ document.addEventListener("DOMContentLoaded", () => {
         btnGenerate.disabled = false;
         btnFetch.disabled = false;
 
-        // 추천 제목을 기본값으로 세팅 (수정 가능)
         const titleInput = document.getElementById("video-title");
         if (suggestedTitle && titleInput) {
             titleInput.value = suggestedTitle;
@@ -198,46 +257,83 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // --- Render Keyword Log ---
-    function renderKeywordLog(log) {
-        if (!log) return;
-
-        let html = `<div class="keyword-log">`;
-
-        // 트렌딩 키워드 — 항상 표시
-        if (log.trending_keywords && log.trending_keywords.length > 0) {
-            html += `<div class="keyword-log-item">
-                <span class="keyword-log-label">트렌딩 키워드</span>
-                <span class="keyword-log-value">${log.trending_keywords.map(k => escapeHtml(k)).join(", ")}</span>
-            </div>`;
-        } else {
-            html += `<div class="keyword-log-item fallback">
-                <span class="keyword-log-label">트렌딩 키워드</span>
-                <span class="keyword-log-value">수집 실패</span>
-            </div>`;
+    // --- Render Trending Keywords (Phase 1) ---
+    function renderTrendingKeywords(keywords, isFallback) {
+        if (!keywords || keywords.length === 0) {
+            issuesContainer.innerHTML =
+                `<p class="placeholder-text">트렌딩 키워드를 가져오지 못했습니다.</p>`;
+            return;
         }
 
-        // 선별된 정치 키워드 + 보충 핫 키워드
-        const politicalTags = (log.political_keywords || []).map(k =>
-            `<span class="keyword-tag${log.is_fallback ? " fallback-tag" : ""}">${escapeHtml(k)}</span>`
-        ).join(" ");
-        const hotTags = (log.hot_keywords || []).map(k =>
-            `<span class="keyword-tag hot-tag">${escapeHtml(k)}</span>`
-        ).join(" ");
-        html += `<div class="keyword-log-item">
-            <span class="keyword-log-label">검색 키워드</span>
-            <span class="keyword-log-value political">${politicalTags} ${hotTags}</span>
-            ${log.is_fallback ? '<span class="keyword-fallback-badge">fallback</span>' : ""}
-        </div>`;
+        selectedKeywords.clear();
+        updateSearchButton();
+
+        let html = `<div class="trending-keywords-section">`;
+        html += `<h3>트렌딩 키워드를 선택하세요 (최대 ${MAX_SELECTION}개)</h3>`;
+        html += `<div class="trending-keywords-grid">`;
+
+        keywords.forEach((kw) => {
+            const typeClass = kw.is_political ? "political" : "non-political";
+            const trafficLabel = kw.traffic > 0 ? `<span class="traffic">${kw.traffic.toLocaleString()}+</span>` : "";
+            html += `<div class="trending-keyword ${typeClass}" data-keyword="${escapeHtml(kw.keyword)}">${escapeHtml(kw.keyword)} ${trafficLabel}</div>`;
+        });
+
+        html += `</div>`;
+        html += `<div class="keyword-select-info"><span class="count">0</span>개 선택됨</div>`;
+
+        if (isFallback) {
+            html += `<div class="keyword-fallback-notice">트렌딩 수집 실패 — 기본 정치 키워드를 표시합니다.</div>`;
+        }
 
         html += `</div>`;
         issuesContainer.innerHTML = html;
+
+        // Attach click handlers
+        issuesContainer.querySelectorAll(".trending-keyword").forEach((tag) => {
+            tag.addEventListener("click", () => onKeywordClick(tag));
+        });
     }
 
-    // --- Render Issues ---
+    function onKeywordClick(tag) {
+        const keyword = tag.dataset.keyword;
+
+        if (tag.classList.contains("selected")) {
+            // Deselect
+            tag.classList.remove("selected");
+            selectedKeywords.delete(keyword);
+        } else {
+            // Select (if under limit)
+            if (selectedKeywords.size >= MAX_SELECTION) return;
+            tag.classList.add("selected");
+            selectedKeywords.add(keyword);
+        }
+
+        updateKeywordUI();
+        updateSearchButton();
+    }
+
+    function updateKeywordUI() {
+        const countEl = issuesContainer.querySelector(".keyword-select-info .count");
+        if (countEl) countEl.textContent = selectedKeywords.size;
+
+        const allTags = issuesContainer.querySelectorAll(".trending-keyword");
+        allTags.forEach((tag) => {
+            if (selectedKeywords.size >= MAX_SELECTION && !tag.classList.contains("selected")) {
+                tag.classList.add("disabled");
+            } else {
+                tag.classList.remove("disabled");
+            }
+        });
+    }
+
+    function updateSearchButton() {
+        btnSearch.disabled = selectedKeywords.size === 0;
+    }
+
+    // --- Render Issues (Phase 2) ---
     function renderIssues(issues, articleCount) {
         if (!issues || issues.length === 0) {
-            issuesContainer.innerHTML =
+            issuesContainer.innerHTML +=
                 `<p class="placeholder-text">분석된 이슈가 없습니다.</p>`;
             return;
         }
@@ -265,14 +361,7 @@ document.addEventListener("DOMContentLoaded", () => {
         updateGenerateButton();
     }
 
-    // Enable/disable generate button based on checkbox selection
     function updateGenerateButton() {
-        const observer = new MutationObserver(() => {
-            const checked = document.querySelectorAll('#issues-container input[type="checkbox"]:checked');
-            btnGenerate.disabled = checked.length === 0;
-        });
-        observer.observe(issuesContainer, { subtree: true, attributes: true });
-
         issuesContainer.addEventListener("change", () => {
             const checked = document.querySelectorAll('#issues-container input[type="checkbox"]:checked');
             btnGenerate.disabled = checked.length === 0;

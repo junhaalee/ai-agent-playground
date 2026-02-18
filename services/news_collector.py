@@ -66,19 +66,29 @@ def _get_trending_keywords():
     return []
 
 
-def _filter_political_keywords(keywords, count=3):
-    """Gemini API로 키워드 목록에서 정치 관련 키워드만 필터링한다."""
+def _filter_political_keywords(trending_items, count=3):
+    """Gemini API로 키워드 목록에서 정치 관련 키워드만 필터링한다.
+    trending_items: [(keyword, traffic, headlines), ...] 형태."""
     try:
         import google.generativeai as genai
 
         genai.configure(api_key=config.GEMINI_API_KEY)
         model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
+        # 키워드 + 관련 기사 헤드라인을 함께 전달
+        keyword_info = []
+        for keyword, traffic, headlines in trending_items:
+            entry = {"키워드": keyword}
+            if headlines:
+                entry["관련기사"] = headlines
+            keyword_info.append(entry)
+
         prompt = (
-            "다음은 한국 실시간 트렌딩 키워드 목록입니다:\n"
-            f"{json.dumps(keywords, ensure_ascii=False)}\n\n"
+            "다음은 한국 실시간 트렌딩 키워드와 관련 기사 헤드라인입니다:\n"
+            f"{json.dumps(keyword_info, ensure_ascii=False)}\n\n"
             f"이 중에서 한국 정치와 관련된 키워드를 최대 {count}개 골라주세요.\n"
-            "정치, 국회, 대통령, 정당, 선거, 법안, 외교, 국방 등 정치와 직접 관련된 것만 선택하세요.\n"
+            "정치인, 국회, 대통령, 정당, 선거, 법안, 외교, 국방, 지방자치단체장 등 정치와 관련된 것을 선택하세요.\n"
+            "인물 이름인 경우 관련 기사 헤드라인을 참고하여 정치인인지 판단하세요.\n"
             "정치 관련 키워드가 없으면 빈 리스트를 반환하세요.\n"
             "반드시 JSON 배열 형식으로만 응답하세요. 예: [\"키워드1\", \"키워드2\"]\n"
             "다른 설명 없이 JSON 배열만 출력하세요."
@@ -112,14 +122,14 @@ def _get_trending_political_keywords():
         logger.warning("[Fallback] 트렌딩 키워드 수집 실패 → 기본 키워드 사용")
         return [], FALLBACK_QUERIES, FALLBACK_QUERIES, [], True
 
-    keyword_names = [k for k, _ in trending_items]
-    political = _filter_political_keywords(keyword_names)
+    keyword_names = [k for k, _, _ in trending_items]
+    political = _filter_political_keywords(trending_items)
 
     # 3개 미만이면 트래픽 높은 순으로 나머지 채우기
     hot_filled = []
     if len(political) < TARGET_COUNT:
         political_set = set(political)
-        hot_candidates = [k for k, _ in trending_items if k not in political_set]
+        hot_candidates = [k for k, _, _ in trending_items if k not in political_set]
         fill_count = TARGET_COUNT - len(political)
         hot_filled = hot_candidates[:fill_count]
         logger.info(f"[키워드 보충] 정치 {len(political)}개 + 핫 트렌딩 {len(hot_filled)}개: {hot_filled}")

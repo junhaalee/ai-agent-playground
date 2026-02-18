@@ -1,18 +1,18 @@
 import os
 import logging
-from PIL import Image, ImageDraw, ImageFont
-from playwright.sync_api import sync_playwright
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 import config
 
 logger = logging.getLogger(__name__)
 
-# Try to find a Korean font
+# Font candidates
 _FONT_CANDIDATES = [
     "/System/Library/Fonts/Supplemental/AppleGothic.ttf",
     "/System/Library/Fonts/AppleSDGothicNeo.ttc",
     "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
 ]
+
 
 def _get_font(size=32):
     for path in _FONT_CANDIDATES:
@@ -21,118 +21,155 @@ def _get_font(size=32):
     return ImageFont.load_default()
 
 
-def _generate_fallback_image(title, source, output_path):
-    """Generate a dark placeholder image when screenshot fails."""
-    img = Image.new("RGB", (config.SHORTS_WIDTH, config.SHORTS_HEIGHT), color=(30, 30, 50))
-    draw = ImageDraw.Draw(img)
-    font_title = _get_font(44)
-    font_source = _get_font(28)
-
-    # Word-wrap title
-    max_chars_per_line = 18
+def _wrap_text(draw, text, font, max_width):
+    """텍스트를 max_width에 맞춰 줄바꿈."""
     lines = []
-    for i in range(0, len(title), max_chars_per_line):
-        lines.append(title[i:i + max_chars_per_line])
-
-    y = config.SHORTS_HEIGHT // 2 - len(lines) * 30
-    for line in lines:
-        bbox = draw.textbbox((0, 0), line, font=font_title)
-        tw = bbox[2] - bbox[0]
-        x = (config.SHORTS_WIDTH - tw) // 2
-        draw.text((x, y), line, fill=(255, 255, 255), font=font_title)
-        y += 60
-
-    # Source attribution
-    if source:
-        source_text = f"- {source} -"
-        bbox = draw.textbbox((0, 0), source_text, font=font_source)
-        tw = bbox[2] - bbox[0]
-        draw.text(((config.SHORTS_WIDTH - tw) // 2, y + 40), source_text,
-                  fill=(180, 180, 180), font=font_source)
-
-    img.save(output_path, "PNG")
+    current_line = ""
+    for char in text:
+        test = current_line + char
+        bbox = draw.textbbox((0, 0), test, font=font)
+        if bbox[2] - bbox[0] <= max_width:
+            current_line = test
+        else:
+            if current_line:
+                lines.append(current_line)
+            current_line = char
+    if current_line:
+        lines.append(current_line)
+    return lines or [text]
 
 
-def _add_source_bar(image_path, source_text, output_path):
-    """Add a semi-transparent source attribution bar at the bottom."""
-    img = Image.open(image_path).convert("RGBA")
-    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+def _generate_gradient_bg():
+    """이미지가 없을 때 사용할 기본 그라데이션 배경."""
+    W, H = config.SHORTS_WIDTH, config.SHORTS_HEIGHT
+    img = Image.new("RGB", (W, H), (18, 18, 35))
+    draw = ImageDraw.Draw(img)
+    for y in range(H):
+        ratio = y / H
+        r = int(18 + (30 - 18) * ratio)
+        g = int(18 + (25 - 18) * ratio)
+        b = int(35 + (60 - 35) * ratio)
+        draw.line([(0, y), (W, y)], fill=(r, g, b))
+    return img
+
+
+def overlay_news_info(bg_image_path, article, output_path, keyword=None):
+    """배경 이미지 위에 어두운 오버레이 + 뉴스 정보를 합성한다.
+
+    Args:
+        bg_image_path: 배경 이미지 경로 (None이면 그라데이션 사용)
+        article: 기사 dict (title, source, link)
+        output_path: 출력 경로
+        keyword: 키워드 태그 (optional)
+    """
+    W, H = config.SHORTS_WIDTH, config.SHORTS_HEIGHT
+    title = article.get("title", "뉴스")
+    source = article.get("source", "")
+
+    # 출처 도메인 추출
+    try:
+        from urllib.parse import urlparse
+        domain = urlparse(source or article.get("link", "")).netloc.replace("www.", "")
+    except Exception:
+        domain = ""
+
+    # 배경 이미지 로드
+    if bg_image_path and os.path.exists(bg_image_path):
+        bg = Image.open(bg_image_path).convert("RGB")
+        bg = bg.resize((W, H), Image.LANCZOS)
+    else:
+        bg = _generate_gradient_bg()
+
+    # RGBA로 변환하여 오버레이 합성
+    img = bg.convert("RGBA")
+
+    # 어두운 반투명 오버레이 (상단 영역 — 제목이 읽히도록)
+    overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    bar_height = 60
-    bar_y = img.height - bar_height
-    draw.rectangle([(0, bar_y), (img.width, img.height)], fill=(0, 0, 0, 160))
+    # 상단 그라데이션 오버레이 (위에서 아래로 점점 투명)
+    for y in range(H // 2):
+        alpha = int(180 * (1 - y / (H // 2)))
+        draw.line([(0, y), (W, y)], fill=(0, 0, 0, alpha))
 
-    font = _get_font(24)
-    if source_text:
-        bbox = draw.textbbox((0, 0), source_text, font=font)
+    # 상단 장식 라인
+    draw.rectangle([(0, 0), (W, 6)], fill=(67, 97, 238, 255))
+
+    # 키워드 태그
+    y_cursor = 200
+    if keyword:
+        font_tag = _get_font(30)
+        tag_text = f"# {keyword}"
+        bbox = draw.textbbox((0, 0), tag_text, font=font_tag)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        tag_pad_h, tag_pad_v = 20, 10
+        tag_x = (W - tw) // 2 - tag_pad_h
+        draw.rounded_rectangle(
+            [(tag_x, y_cursor), (tag_x + tw + tag_pad_h * 2, y_cursor + th + tag_pad_v * 2)],
+            radius=20,
+            fill=(67, 97, 238, 230),
+        )
+        draw.text((tag_x + tag_pad_h, y_cursor + tag_pad_v), tag_text,
+                  fill=(255, 255, 255, 255), font=font_tag)
+        y_cursor += th + tag_pad_v * 2 + 40
+
+    # 제목 (큰 글씨)
+    font_title = _get_font(46)
+    max_title_w = W - 120
+    title_lines = _wrap_text(draw, title, font_title, max_title_w)
+    title_lines = title_lines[:4]
+
+    title_line_h = 64
+    for line in title_lines:
+        bbox = draw.textbbox((0, 0), line, font=font_title)
         tw = bbox[2] - bbox[0]
-        draw.text(((img.width - tw) // 2, bar_y + 18), source_text,
-                  fill=(255, 255, 255, 230), font=font)
+        x = (W - tw) // 2
+        # 텍스트 그림자
+        draw.text((x + 2, y_cursor + 2), line, fill=(0, 0, 0, 180), font=font_title)
+        draw.text((x, y_cursor), line, fill=(255, 255, 255, 255), font=font_title)
+        y_cursor += title_line_h
+
+    # 출처
+    if domain:
+        font_meta = _get_font(24)
+        y_cursor += 20
+        bbox = draw.textbbox((0, 0), domain, font=font_meta)
+        tw = bbox[2] - bbox[0]
+        draw.text(((W - tw) // 2 + 1, y_cursor + 1), domain,
+                  fill=(0, 0, 0, 150), font=font_meta)
+        draw.text(((W - tw) // 2, y_cursor), domain,
+                  fill=(200, 200, 220, 255), font=font_meta)
 
     result = Image.alpha_composite(img, overlay).convert("RGB")
     result.save(output_path, "PNG")
 
 
-def capture_articles_sync(articles, temp_dir):
-    """
-    Capture screenshots of article URLs.
-    Returns list of image file paths (1080x1920).
+def generate_frames_for_article(bg_images, article, temp_dir, article_idx, keyword=None):
+    """기사 하나에 대해 배경 이미지별 프레임을 생성한다.
+
+    Args:
+        bg_images: 배경 이미지 경로 리스트
+        article: 기사 dict
+        temp_dir: 임시 디렉토리
+        article_idx: 기사 인덱스
+        keyword: 키워드 태그
+
+    Returns:
+        뉴스 정보가 오버레이된 프레임 이미지 경로 리스트
     """
     os.makedirs(temp_dir, exist_ok=True)
-    image_paths = []
+    frame_paths = []
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            viewport={"width": config.SHORTS_WIDTH, "height": config.SHORTS_HEIGHT},
-            device_scale_factor=1,
-        )
+    if not bg_images:
+        # 배경 이미지 없으면 그라데이션 1장
+        output_path = os.path.join(temp_dir, f"card_{article_idx}_0.png")
+        overlay_news_info(None, article, output_path, keyword=keyword)
+        frame_paths.append(output_path)
+        return frame_paths
 
-        for i, article in enumerate(articles):
-            output_path = os.path.join(temp_dir, f"screenshot_{i}.png")
-            url = article.get("link") or article.get("source", "")
-            title = article.get("title", f"기사 {i + 1}")
-            source = article.get("source", "")
+    for i, bg_path in enumerate(bg_images):
+        output_path = os.path.join(temp_dir, f"card_{article_idx}_{i}.png")
+        overlay_news_info(bg_path, article, output_path, keyword=keyword)
+        frame_paths.append(output_path)
 
-            # Extract domain name for attribution
-            try:
-                from urllib.parse import urlparse
-                domain = urlparse(source or url).netloc.replace("www.", "")
-            except Exception:
-                domain = ""
-
-            if not url:
-                _generate_fallback_image(title, domain, output_path)
-                image_paths.append(output_path)
-                continue
-
-            try:
-                page = context.new_page()
-                page.goto(url, wait_until="domcontentloaded", timeout=15000)
-                page.wait_for_timeout(2000)
-
-                raw_path = os.path.join(temp_dir, f"raw_{i}.png")
-                page.screenshot(path=raw_path, full_page=False)
-                page.close()
-
-                # Crop/resize to exact Shorts dimensions
-                img = Image.open(raw_path)
-                img = img.resize((config.SHORTS_WIDTH, config.SHORTS_HEIGHT), Image.LANCZOS)
-                img.save(output_path, "PNG")
-
-                # Add source bar
-                _add_source_bar(output_path, domain, output_path)
-
-                # Clean up raw
-                os.remove(raw_path)
-
-            except Exception as e:
-                logger.warning(f"Screenshot failed for {url}: {e}")
-                _generate_fallback_image(title, domain, output_path)
-
-            image_paths.append(output_path)
-
-        browser.close()
-
-    return image_paths
+    return frame_paths

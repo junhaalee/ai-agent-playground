@@ -124,7 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 progressBar.style.width = "100%";
                 progressBar.classList.remove("progress-bar-error");
                 progressText.textContent = "완료!";
-                showCompletion();
+                showCompletion(data.suggested_title);
             } else if (data.status === "error") {
                 clearInterval(pollTimer);
                 const errMsg = data.error || "알 수 없는 오류";
@@ -139,11 +139,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function showCompletion() {
+    function showCompletion(suggestedTitle) {
         completionSection.classList.remove("hidden");
         uploadResult.classList.add("hidden");
         btnGenerate.disabled = false;
         btnFetch.disabled = false;
+
+        // 추천 제목을 기본값으로 세팅 (수정 가능)
+        const titleInput = document.getElementById("video-title");
+        if (suggestedTitle && titleInput) {
+            titleInput.value = suggestedTitle;
+        }
     }
 
     // --- YouTube Upload ---

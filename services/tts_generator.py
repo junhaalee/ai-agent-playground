@@ -10,18 +10,6 @@ VOICE = "ko-KR-InJoonNeural"
 _TICKS_PER_SEC = 10_000_000
 
 
-def _build_narration_text(article):
-    """Build a short narration script from article title + description."""
-    title = article.get("title", "")
-    desc = article.get("description", "")
-    # Truncate description to ~80 chars for brevity
-    if len(desc) > 80:
-        desc = desc[:80].rsplit(" ", 1)[0] + "."
-    if desc:
-        return f"{title}. {desc}"
-    return title
-
-
 async def _generate_single(text, audio_path):
     """Generate TTS audio and extract subtitle timing from SentenceBoundary."""
     communicate = edge_tts.Communicate(text, VOICE)
@@ -49,12 +37,18 @@ async def _generate_single(text, audio_path):
     return segments
 
 
-def generate_narration_sync(articles, temp_dir):
-    """
-    Generate TTS narration for each article.
-    Returns (audio_paths, all_subtitle_segments).
-    audio_paths: list of MP3 file paths
-    all_subtitle_segments: list of list of {text, start, end}
+def generate_narration_sync(summary_sentences_list, temp_dir):
+    """요약된 문장 리스트를 받아 기사별 TTS 생성.
+
+    Args:
+        summary_sentences_list: [[문장1, 문장2, ...], [문장1, ...], ...]
+            각 기사의 요약 문장 리스트
+        temp_dir: 임시 파일 디렉토리
+
+    Returns:
+        (audio_paths, all_subtitle_segments)
+        audio_paths: list of MP3 file paths
+        all_subtitle_segments: list of list of {text, start, end}
     """
     os.makedirs(temp_dir, exist_ok=True)
     audio_paths = []
@@ -62,8 +56,9 @@ def generate_narration_sync(articles, temp_dir):
 
     loop = asyncio.new_event_loop()
 
-    for i, article in enumerate(articles):
-        text = _build_narration_text(article)
+    for i, sentences in enumerate(summary_sentences_list):
+        # 문장들을 하나의 나레이션 텍스트로 합침
+        text = " ".join(sentences)
         audio_path = os.path.join(temp_dir, f"narration_{i}.mp3")
 
         try:

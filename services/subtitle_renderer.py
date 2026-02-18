@@ -6,10 +6,10 @@ import config
 
 logger = logging.getLogger(__name__)
 
-# Subtitle Y positions for 1920-height frame
+# 자막 위치 (1920 높이 기준)
 POSITION_MAP = {
-    "top": 200,
-    "middle": 860,
+    "top": 1100,
+    "middle": 1350,
     "bottom": 1600,
 }
 
@@ -28,13 +28,30 @@ def _get_font(size=40):
     return ImageFont.load_default()
 
 
+def _wrap_text(draw, text, font, max_width):
+    """텍스트를 max_width에 맞춰 줄바꿈."""
+    lines = []
+    current_line = ""
+    for char in text:
+        test = current_line + char
+        bbox = draw.textbbox((0, 0), test, font=font)
+        if bbox[2] - bbox[0] <= max_width:
+            current_line = test
+        else:
+            if current_line:
+                lines.append(current_line)
+            current_line = char
+    if current_line:
+        lines.append(current_line)
+    return lines or [text]
+
+
 def render_subtitle_on_image(image_path, text, position, output_path):
-    """
-    Render subtitle text onto a copy of the image with a semi-transparent background.
-    position: "top", "middle", or "bottom"
+    """뉴스 카드 이미지 위에 자막 한 줄을 렌더링한다.
+
+    한 줄이 길면 자동 줄바꿈하되, 기본적으로 한 문장 = 한 프레임.
     """
     if not text or not text.strip():
-        # No subtitle to render, just copy the image
         img = Image.open(image_path)
         img.save(output_path, "PNG")
         return
@@ -43,24 +60,18 @@ def render_subtitle_on_image(image_path, text, position, output_path):
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    font = _get_font(42)
+    font = _get_font(44)
     y_center = POSITION_MAP.get(position, POSITION_MAP["bottom"])
 
-    # Word-wrap text to fit within image width with padding
-    max_width = config.SHORTS_WIDTH - 80  # 40px padding each side
-    lines = _wrap_text(draw, text, font, max_width)
+    max_width = config.SHORTS_WIDTH - 100
+    lines = _wrap_text(draw, text.strip(), font, max_width)
 
-    # Calculate total text block height
-    line_height = 56
+    line_height = 60
     total_height = len(lines) * line_height
-    padding_v = 16
-    padding_h = 24
+    padding_v = 20
+    padding_h = 30
 
-    # Draw background box
-    box_top = y_center - total_height // 2 - padding_v
-    box_bottom = y_center + total_height // 2 + padding_v
-
-    # Find max line width for box
+    # 배경 박스 크기 계산
     max_line_w = 0
     for line in lines:
         bbox = draw.textbbox((0, 0), line, font=font)
@@ -68,16 +79,18 @@ def render_subtitle_on_image(image_path, text, position, output_path):
         if lw > max_line_w:
             max_line_w = lw
 
+    box_top = y_center - total_height // 2 - padding_v
+    box_bottom = y_center + total_height // 2 + padding_v
     box_left = (config.SHORTS_WIDTH - max_line_w) // 2 - padding_h
     box_right = (config.SHORTS_WIDTH + max_line_w) // 2 + padding_h
 
     draw.rounded_rectangle(
         [(box_left, box_top), (box_right, box_bottom)],
-        radius=12,
-        fill=(0, 0, 0, 180),
+        radius=14,
+        fill=(0, 0, 0, 190),
     )
 
-    # Draw text lines
+    # 텍스트 그리기
     y = y_center - total_height // 2
     for line in lines:
         bbox = draw.textbbox((0, 0), line, font=font)
@@ -88,33 +101,3 @@ def render_subtitle_on_image(image_path, text, position, output_path):
 
     result = Image.alpha_composite(img, overlay).convert("RGB")
     result.save(output_path, "PNG")
-
-
-def _wrap_text(draw, text, font, max_width):
-    """Break text into lines that fit within max_width."""
-    words = text.split()
-    lines = []
-    current_line = ""
-
-    for word in words:
-        test_line = f"{current_line} {word}".strip() if current_line else word
-        bbox = draw.textbbox((0, 0), test_line, font=font)
-        tw = bbox[2] - bbox[0]
-        if tw <= max_width:
-            current_line = test_line
-        else:
-            if current_line:
-                lines.append(current_line)
-            # If a single word is too long, break by characters
-            bbox = draw.textbbox((0, 0), word, font=font)
-            if bbox[2] - bbox[0] > max_width:
-                for i in range(0, len(word), 10):
-                    lines.append(word[i:i + 10])
-                current_line = ""
-            else:
-                current_line = word
-
-    if current_line:
-        lines.append(current_line)
-
-    return lines if lines else [text]

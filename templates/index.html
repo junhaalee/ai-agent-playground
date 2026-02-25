@@ -13,6 +13,7 @@
         </header>
 
         <div class="actions">
+            <input type="text" id="custom-keyword" class="keyword-input" placeholder="키워드 추가 (선택)" />
             <button id="btn-fetch" class="btn btn-primary">최신 화제 가져오기</button>
             <button id="btn-search" class="btn btn-search" disabled>뉴스 검색</button>
             <button id="btn-generate" class="btn btn-secondary" disabled>쇼츠 생성하기</button>
@@ -44,11 +45,10 @@
                     <label class="option-label" for="bgm">배경음악</label>
                     <select id="bgm">
                         <option value="none">없음</option>
-                        <option value="epic">웅장</option>
-                        <option value="calm">잔잔</option>
-                        <option value="cheerful">명랑</option>
-                        <option value="exciting">신남</option>
-                        <option value="dreamy">몽환</option>
+                        <option value="mystery">미스터리</option>
+                        <option value="dreamy">웅장</option>
+                        <option value="funcky">펑키</option>
+                        <option value="normal">일상</option>
                     </select>
                 </div>
 
@@ -95,7 +95,7 @@
                 </div>
                 <div class="option-group">
                     <label class="option-label" for="video-desc">영상 설명</label>
-                    <textarea id="video-desc" rows="3" placeholder="영상 설명 (선택사항)"></textarea>
+                    <textarea id="video-desc" rows="10" placeholder="영상 설명 (선택사항)"></textarea>
                 </div>
                 <button id="btn-upload" class="btn btn-upload">유튜브 업로드</button>
             </div>

@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const completionSection = document.getElementById("completion-section");
     const btnUpload = document.getElementById("btn-upload");
     const uploadResult = document.getElementById("upload-result");
+    const customKeywordInput = document.getElementById("custom-keyword");
 
     const MAX_SELECTION = 3;
     let currentJobId = null;
@@ -40,7 +41,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            renderTrendingKeywords(data.keywords, data.is_fallback);
+            const keywords = data.keywords || [];
+            const custom = customKeywordInput.value.trim();
+            if (custom) {
+                keywords.push({ keyword: custom, traffic: 0, is_political: false, is_custom: true });
+                customKeywordInput.value = "";
+            }
+            renderTrendingKeywords(keywords, data.is_fallback);
         } catch (err) {
             spinner.classList.add("hidden");
             issuesContainer.innerHTML =
@@ -116,6 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
             duration: document.getElementById("duration").value,
             subtitle_pos: document.getElementById("subtitle-pos").value,
             speed: document.getElementById("speed").value,
+            bgm: document.getElementById("bgm").value,
         };
 
         btnGenerate.disabled = true;
@@ -184,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 progressBar.style.width = "100%";
                 progressBar.classList.remove("progress-bar-error");
                 progressText.textContent = "완료!";
-                showCompletion(data.suggested_title);
+                showCompletion(data.suggested_title, data.suggested_description);
             } else if (data.status === "error") {
                 clearInterval(pollTimer);
                 const errMsg = data.error || "알 수 없는 오류";
@@ -199,7 +207,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function showCompletion(suggestedTitle) {
+    function showCompletion(suggestedTitle, suggestedDescription) {
         completionSection.classList.remove("hidden");
         uploadResult.classList.add("hidden");
         btnGenerate.disabled = false;
@@ -208,6 +216,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const titleInput = document.getElementById("video-title");
         if (suggestedTitle && titleInput) {
             titleInput.value = suggestedTitle;
+        }
+        const descInput = document.getElementById("video-desc");
+        if (suggestedDescription && descInput) {
+            descInput.value = suggestedDescription;
         }
     }
 
@@ -273,9 +285,11 @@ document.addEventListener("DOMContentLoaded", () => {
         html += `<div class="trending-keywords-grid">`;
 
         keywords.forEach((kw) => {
-            const typeClass = kw.is_political ? "political" : "non-political";
+            const typeClass = kw.is_custom ? "custom" : (kw.is_political ? "political" : "non-political");
             const trafficLabel = kw.traffic > 0 ? `<span class="traffic">${kw.traffic.toLocaleString()}+</span>` : "";
-            html += `<div class="trending-keyword ${typeClass}" data-keyword="${escapeHtml(kw.keyword)}">${escapeHtml(kw.keyword)} ${trafficLabel}</div>`;
+            const sourceLabel = kw.source === "google" ? `<span class="keyword-source">[G]</span>` :
+                                kw.source === "signal" ? `<span class="keyword-source">[S]</span>` : "";
+            html += `<div class="trending-keyword ${typeClass}" data-keyword="${escapeHtml(kw.keyword)}">${escapeHtml(kw.keyword)} ${trafficLabel} ${sourceLabel}</div>`;
         });
 
         html += `</div>`;

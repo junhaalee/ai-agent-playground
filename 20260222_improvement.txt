@@ -1,0 +1,27 @@
+1. TTS 엔진 교체: edge-tts (HyunsuNeural) → ElevenLabs (음성 클로닝)
+   - ElevenLabs API 연동 (eleven_multilingual_v2 모델)
+   - 사용자 음성 클로닝으로 나레이션 생성
+   - 자막 타이밍: 오디오 길이 기반 글자 수 비율 분배
+   - 수정 파일: tts_generator.py, config.py, .env
+
+2. BGM 배경음악 기능 추가
+   - UI 옵션: 미스터리/웅장/펑키/일상 (mystery/dreamy/funcky/normal)
+   - bgm/ 폴더 하위 카테고리별 음원 랜덤 선택
+   - 나레이션에 BGM 15% 볼륨 믹싱, 끝 2초 페이드아웃
+   - BGM은 나레이션 길이에 맞춰 루프 재생
+   - 수정 파일: video_creator.py, main.js, index.html
+
+3. 자막 싱크 정확도 개선
+   - 기존: 글자 수 비율로 타이밍 추정 (부정확)
+   - 변경: ElevenLabs convert_with_timestamps API로 글자별 실제 타임스탬프 수신
+   - 마침표 기준 문장 분리 후 정확한 start/end 시간 적용
+   - mutagen 의존성 제거
+   - 수정 파일: tts_generator.py
+
+4. signal.bz 실시간 뉴스 키워드 소스 추가
+   - 기존: Google Trends만 사용
+   - 변경: Google Trends 상위 5개 + signal.bz 상위 5개 합산 (중복 제거)
+   - Playwright 헤드리스 브라우저로 signal.bz/news 크롤링
+   - UI에 출처 라벨 표시: [G] Google, [S] signal.bz
+   - signal.bz 실패 시 Google만 표시 (graceful fallback)
+   - 수정 파일: news_collector.py, main.js, style.css

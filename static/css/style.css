@@ -32,7 +32,22 @@ header h1 {
     display: flex;
     gap: 12px;
     justify-content: center;
+    align-items: center;
     margin-bottom: 24px;
+}
+
+.keyword-input {
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    width: 180px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.keyword-input:focus {
+    border-color: #4361ee;
 }
 
 .btn {
@@ -449,6 +464,13 @@ select:focus {
     opacity: 0.8;
 }
 
+.keyword-source {
+    font-size: 0.65rem;
+    font-weight: 700;
+    opacity: 0.5;
+    margin-left: 2px;
+}
+
 .trending-keyword.political {
     background: #dbeafe;
     color: #1e40af;
@@ -457,6 +479,11 @@ select:focus {
 .trending-keyword.non-political {
     background: #fff3e0;
     color: #e65100;
+}
+
+.trending-keyword.custom {
+    background: #e8f5e9;
+    color: #2e7d32;
 }
 
 .trending-keyword:hover:not(.disabled) {

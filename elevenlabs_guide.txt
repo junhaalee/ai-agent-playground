@@ -1,0 +1,127 @@
+========================================
+ ElevenLabs API 사용 가이드 (2026.02.22)
+========================================
+
+현재 프로젝트에서 사용 중인 기능과 설정 기준으로 정리.
+
+
+──────────────────────────────────────
+1. 현재 사용 중인 기능
+──────────────────────────────────────
+
+[음성 클로닝 (Instant Voice Clone)]
+- my_voice.wav 파일을 업로드하여 내 목소리 복제
+- ElevenLabs 웹사이트 → Voices → Add Voice → Instant Voice Clone
+- Starter 플랜($5/월) 이상 필요 (Free 불가)
+
+[Text to Speech + 타임스탬프]
+- convert_with_timestamps() 메서드 사용
+- 텍스트 → 음성 변환 + 글자별 정확한 시작/끝 시간 반환
+- 자막 싱크에 활용 중
+
+
+──────────────────────────────────────
+2. 현재 설정값
+──────────────────────────────────────
+
+- 모델: eleven_multilingual_v2 (한국어 지원, 최고 품질)
+- 출력 포맷: mp3_44100_128
+- Voice ID: .env 파일의 ELEVENLABS_VOICE_ID
+- API Key: .env 파일의 ELEVENLABS_API_KEY
+
+
+──────────────────────────────────────
+3. 코드에서 사용하는 방식
+──────────────────────────────────────
+
+[기본 TTS 생성 (타임스탬프 포함)]
+
+  from elevenlabs import ElevenLabs
+  import base64
+
+  client = ElevenLabs(api_key="API_KEY")
+
+  result = client.text_to_speech.convert_with_timestamps(
+      voice_id="VOICE_ID",
+      text="오늘의 뉴스입니다.",
+      model_id="eleven_multilingual_v2",
+      output_format="mp3_44100_128",
+  )
+
+  # 오디오 저장
+  audio_bytes = base64.b64decode(result.audio_base_64)
+  with open("output.mp3", "wb") as f:
+      f.write(audio_bytes)
+
+  # 타임스탬프 접근
+  alignment = result.alignment
+  chars = alignment.characters                        # ['오', '늘', '의', ...]
+  starts = alignment.character_start_times_seconds    # [0.0, 0.24, 0.44, ...]
+  ends = alignment.character_end_times_seconds        # [0.24, 0.44, 0.51, ...]
+
+[타임스탬프 없이 단순 TTS]
+
+  audio = client.text_to_speech.convert(
+      voice_id="VOICE_ID",
+      text="오늘의 뉴스입니다.",
+      model_id="eleven_multilingual_v2",
+      output_format="mp3_44100_128",
+  )
+
+  with open("output.mp3", "wb") as f:
+      for chunk in audio:
+          f.write(chunk)
+
+  ※ convert()는 제너레이터 반환 → 반복문으로 저장
+  ※ convert_with_timestamps()는 객체 반환 → base64 디코딩 필요
+
+
+──────────────────────────────────────
+4. 주의사항
+──────────────────────────────────────
+
+[글자 수 제한]
+- Starter 플랜: 월 30,000자
+- 공백, 구두점, 마침표 모두 글자 수에 포함됨
+- 쇼츠 1개당 약 200~400자 소모 → 월 75~150개 생성 가능
+- 초과 시 추가 과금 설정 안 했으면 API 호출 불가
+
+[API Key 보안]
+- 절대 코드에 하드코딩 금지
+- .env 파일로 관리, .gitignore에 .env 포함 확인
+
+[한 번에 보낼 수 있는 텍스트]
+- 최대 약 5,000자
+- 그 이상은 나눠서 호출
+
+[동시 요청]
+- Starter 플랜: 동시 2개까지
+- 초과 시 429 에러 → 순차 호출 권장
+
+[모델 선택]
+- eleven_multilingual_v2: 한국어 품질 최고, 응답 느림 (1~2초)
+- eleven_turbo_v2_5: 한국어 지원 + 빠름 (품질 약간 낮음)
+- eleven_turbo_v2: 영어 전용 → 한국어 불가
+
+
+──────────────────────────────────────
+5. 음성 클로닝 팁
+──────────────────────────────────────
+
+- 녹음 시 배경 소음 제거 (에어컨, 선풍기 끄기)
+- 일정한 마이크 거리 유지
+- 실제 사용할 톤으로 녹음 (뉴스 읽기 톤)
+- 샘플 길이: 최소 30초, 권장 1~3분
+- 파일 형식: WAV 또는 고품질 MP3
+- 파일 크기: 개별 최대 10MB
+
+
+──────────────────────────────────────
+6. 사용량 확인
+──────────────────────────────────────
+
+- ElevenLabs 웹사이트 → 좌측 하단 프로필 → Subscription
+- 또는 API로 조회:
+
+  subscription = client.user.get_subscription()
+  print(f"사용: {subscription.character_count} / {subscription.character_limit}")

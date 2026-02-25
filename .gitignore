@@ -5,6 +5,7 @@ youtube_token.json
 
 # Large files
 *.wav
+*.mp3
 
 # OS files
 .DS_Store
@@ -13,10 +14,24 @@ youtube_token.json
 __pycache__/
 *.pyc
 *.pyo
+venv/
+.venv/
 
 # Output & Temp
 output/
 temp/
+
+# BGM
+bgm/
+
+# Assets (large files)
+my_voice.wav
+assets/robot_anchor.png
+
+# Test files
+test_*.mp3
+test_*.mp4
+test_*.wav
 
 # Claude
 .claude/

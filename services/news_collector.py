@@ -18,7 +18,7 @@ def _clean_html(text):
     return unescape(text).strip()
 
 
-def _is_within_days(pub_date_str, days=7):
+def _is_within_days(pub_date_str, days=3):
     try:
         pub_date = datetime.strptime(pub_date_str, "%a, %d %b %Y %H:%M:%S %z")
         cutoff = datetime.now(pub_date.tzinfo) - timedelta(days=days)
@@ -33,6 +33,35 @@ def _parse_traffic(traffic_str):
         return int(re.sub(r"[^0-9]", "", str(traffic_str)))
     except (ValueError, TypeError):
         return 0
+
+
+GOOGLE_KEYWORD_LIMIT = 5
+SIGNAL_KEYWORD_LIMIT = 5
+
+
+def _get_signal_keywords():
+    """signal.bz에서 실시간 뉴스 키워드 상위 N개를 크롤링한다.
+    반환: [(keyword, 0, []), ...] 형태 (traffic 정보 없음)."""
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.goto("https://signal.bz/news", timeout=15000)
+            page.wait_for_selector("span.rank-text", timeout=10000)
+            elements = page.query_selector_all("span.rank-text")
+            keywords = []
+            for el in elements[:SIGNAL_KEYWORD_LIMIT]:
+                text = el.inner_text().strip()
+                if text:
+                    keywords.append((text, 0, []))
+            browser.close()
+        if keywords:
+            logger.info(f"[signal.bz] {len(keywords)}개 수집: {[k for k, _, _ in keywords]}")
+        return keywords
+    except Exception as e:
+        logger.error(f"[signal.bz] 수집 실패: {e}")
+    return []
 
 
 def _get_trending_keywords():
@@ -74,7 +103,7 @@ def _tag_political_keywords(trending_items):
         import google.generativeai as genai
 
         genai.configure(api_key=config.GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-2.5-flash-lite")
+        model = genai.GenerativeModel("gemini-2.5-flash")
 
         keyword_info = []
         for keyword, traffic, headlines in trending_items:
@@ -113,28 +142,46 @@ def _tag_political_keywords(trending_items):
 
 
 def get_trending_keywords():
-    """트렌딩 키워드를 수집하고 정치 여부를 태깅하여 반환한다.
-    반환: [{ keyword, traffic, is_political }, ...]"""
-    trending_items = _get_trending_keywords()
+    """Google Trends 상위 5개 + signal.bz 상위 5개를 합쳐서 반환한다.
+    반환: [{ keyword, traffic, is_political, source }, ...]"""
+    google_items = _get_trending_keywords()[:GOOGLE_KEYWORD_LIMIT]
+    signal_items = _get_signal_keywords()
 
-    if not trending_items:
-        logger.warning("[Fallback] 트렌딩 키워드 수집 실패 → 기본 키워드 사용")
+    if not google_items and not signal_items:
+        logger.warning("[Fallback] 키워드 수집 실패 → 기본 키워드 사용")
         return [
-            {"keyword": q, "traffic": 0, "is_political": True}
+            {"keyword": q, "traffic": 0, "is_political": True, "source": "fallback"}
             for q in FALLBACK_QUERIES
         ], True
 
-    political_set = _tag_political_keywords(trending_items)
+    # 중복 제거 (Google 우선)
+    seen = set()
+    merged = []
+    for keyword, traffic, headlines in google_items:
+        if keyword not in seen:
+            seen.add(keyword)
+            merged.append((keyword, traffic, headlines, "google"))
+    for keyword, traffic, headlines in signal_items:
+        if keyword not in seen:
+            seen.add(keyword)
+            merged.append((keyword, traffic, headlines, "signal"))
+
+    # Gemini 정치 태깅 (source 제외한 형태로 전달)
+    tagging_items = [(k, t, h) for k, t, h, _ in merged]
+    political_set = _tag_political_keywords(tagging_items)
 
     result = []
-    for keyword, traffic, _headlines in trending_items:
+    for keyword, traffic, _headlines, source in merged:
         result.append({
             "keyword": keyword,
             "traffic": traffic,
             "is_political": keyword in political_set,
+            "source": source,
         })
 
-    logger.info(f"[트렌딩] {len(result)}개 키워드 (정치 {len(political_set)}개)")
+    g_count = sum(1 for r in result if r["source"] == "google")
+    s_count = sum(1 for r in result if r["source"] == "signal")
+    logger.info(f"[트렌딩] 총 {len(result)}개 (Google {g_count} + signal {s_count}), 정치 {len(political_set)}개")
     return result, False
 
 
